@@ -10,7 +10,7 @@ function Leaderboard() {
         setError("");
 
         const response = await fetch(
-          "https://sandbox-10.onrender.com/api/leaderboard"
+          "https://sandbox-11.onrender.com/api/leaderboard"
         );
 
         const result = await response.json();
