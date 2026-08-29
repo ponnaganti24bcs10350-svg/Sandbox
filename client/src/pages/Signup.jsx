@@ -15,7 +15,7 @@ function Signup({ onLogin }) {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/signup",
+        "https://sandbox-10.onrender.com/api/auth/signup",
         {
           method: "POST",
           headers: {

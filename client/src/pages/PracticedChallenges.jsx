@@ -12,7 +12,7 @@ function PracticedChallenges({ onPractice }) {
         const token = localStorage.getItem("token");
 
         const response = await fetch(
-          "http://localhost:5000/api/progress/practiced",
+          "https://sandbox-10.onrender.com/api/progress/practiced",
           {
             headers: {
               Authorization: `Bearer ${token}`,

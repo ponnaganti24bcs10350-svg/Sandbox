@@ -123,7 +123,7 @@ function ChallengeWorkspace({ selectedChallenge }) {
         }
 
         const response = await fetch(
-          "http://localhost:5000/api/progress/current",
+          "https://sandbox-10.onrender.com/api/progress/current",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -228,7 +228,7 @@ function ChallengeWorkspace({ selectedChallenge }) {
       }
 
       const response = await fetch(
-        `http://localhost:5000/api/progress/${direction}`,
+        `https://sandbox-10.onrender.com/api/progress/${direction}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -315,7 +315,7 @@ function ChallengeWorkspace({ selectedChallenge }) {
       }
 
       const response = await fetch(
-        "http://localhost:5000/api/challenges/run",
+        "https://sandbox-10.onrender.com/api/challenges/run",
         {
           method: "POST",
 
@@ -358,7 +358,7 @@ function ChallengeWorkspace({ selectedChallenge }) {
         data.newlySolved
       ) {
         const meResponse = await fetch(
-          "http://localhost:5000/api/auth/me",
+          "https://sandbox-10.onrender.com/api/auth/me",
           {
             headers: {
               Authorization:
