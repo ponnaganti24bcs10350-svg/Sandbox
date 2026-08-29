@@ -158,9 +158,7 @@ function Login({ onSignup, onLogin }) {
               </p>
             )}
 
-            <div className="forgot-password">
-              Forgot password?
-            </div>
+           
 
             <button
               type="submit"
@@ -171,19 +169,6 @@ function Login({ onSignup, onLogin }) {
 
           </form>
 
-          <div className="auth-divider">
-            <span></span>
-            <p>or</p>
-            <span></span>
-          </div>
-
-          <button
-            type="button"
-            className="google-button"
-          >
-            <span className="google-icon">G</span>
-            Continue with Google
-          </button>
 
           <p className="switch-auth">
             Don't have an account?{" "}
