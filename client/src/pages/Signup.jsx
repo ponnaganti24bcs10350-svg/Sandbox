@@ -15,7 +15,7 @@ function Signup({ onLogin }) {
 
     try {
       const response = await fetch(
-        "https://sandbox-10.onrender.com/api/auth/signup",
+        "https://sandbox-11.onrender.com/api/auth/signup",
         {
           method: "POST",
           headers: {
