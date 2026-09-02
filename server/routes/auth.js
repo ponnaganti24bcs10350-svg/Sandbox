@@ -15,6 +15,8 @@ const userResponse = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  javascriptScore: user.javascriptScore,
+  reactScore: user.reactScore,
   progress: user.progressSummary(),
 });
 
@@ -22,7 +24,7 @@ const userResponse = (user) => ({
 // @body   { name, email, password }
 router.post("/signup", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: "Name, email and password are required" });
@@ -33,7 +35,7 @@ router.post("/signup", async (req, res) => {
       return res.status(409).json({ success: false, message: "An account with this email already exists" });
     }
 
-    const user = await User.create({ name, email, password });
+    const user = await User.create({ name, email, password,role:role=== "company" ? "company" : "student" });
     user.resetDailyIfNeeded();
     await user.save();
 
