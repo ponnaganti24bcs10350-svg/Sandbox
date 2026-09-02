@@ -9,6 +9,7 @@ const authRoutes = require("./routes/auth");
 const challengeRoutes = require("./routes/challengeRoutes");
 const leaderboardRoutes = require("./routes/leaderboardRoutes");
 const progressRoutes = require("./routes/progressRoutes");
+const invitationRoutes = require("./routes/invitationRoutes");
 
 const app = express();
 
@@ -32,6 +33,8 @@ app.use("/api/leaderboard", leaderboardRoutes);
 
 app.use("/api/progress", progressRoutes);
 
+app.use("/api/invitations", invitationRoutes);
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
@@ -51,8 +54,5 @@ connectDB()
     });
   })
   .catch((error) => {
-    console.error(
-      "Failed to start server:",
-      error
-    );
+    console.error("Failed to start server:", error);
   });
