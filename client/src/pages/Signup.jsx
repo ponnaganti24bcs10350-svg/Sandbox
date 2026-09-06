@@ -2,7 +2,7 @@ import { useState } from "react";
 import { getApiUrl } from "../config/api";
 
 
-function Signup({ onLogin }) {
+function Signup({ onLogin, onSignIn }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -231,7 +231,7 @@ function Signup({ onLogin }) {
           <button
             type="button"
             className="auth-tab"
-            onClick={onLogin}
+            onClick={onSignIn}
           >
             Sign In
           </button>
@@ -353,7 +353,7 @@ function Signup({ onLogin }) {
             Already have an account?{" "}
             <button
               type="button"
-              onClick={onLogin}
+              onClick={onSignIn}
             >
               Sign in
             </button>

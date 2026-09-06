@@ -146,9 +146,8 @@ function App() {
 
       {page === "signup" && (
         <Signup
-          onLogin={() =>
-            setPage("login")
-          }
+          onLogin={handleLogin}
+          onSignIn={() => setPage("login")}
         />
       )}
 
