@@ -9,9 +9,11 @@ import Signup from "./pages/Signup";
 import CompanySignup from "./pages/CompanySignup";
 import Profile from "./pages/Profile";
 import StudentInvitations from "./pages/StudentInvitations";
+import EmailVerification from "./pages/EmailVerification";
 
 
 function App() {
+  const [verificationData, setVerificationData] = useState(null);
   const [page, setPage] = useState(() => {
     const token = localStorage.getItem("token");
 
@@ -148,6 +150,23 @@ function App() {
         <Signup
           onLogin={handleLogin}
           onSignIn={() => setPage("login")}
+          onRequireVerification={(data) => {
+            setVerificationData(data);
+            setPage("email-verification");
+          }}
+        />
+      )}
+
+      {/* ================= EMAIL VERIFICATION ================= */}
+
+      {page === "email-verification" && (
+        <EmailVerification
+          email={verificationData?.email}
+          name={verificationData?.name}
+          password={verificationData?.password}
+          role={verificationData?.role || "student"}
+          onVerified={() => handleLogin()}
+          onBack={() => setPage("signup")}
         />
       )}
 
@@ -192,6 +211,7 @@ function App() {
 
       {page !== "login" &&
         page !== "signup" &&
+        page !== "email-verification" &&
         page !== "company-signup" &&
         page !== "company" &&
         page !== "profile" && (

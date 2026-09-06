@@ -2,7 +2,7 @@ import { useState } from "react";
 import { getApiUrl } from "../config/api";
 
 
-function Signup({ onLogin, onSignIn }) {
+function Signup({ onLogin, onSignIn, onRequireVerification }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,16 +17,14 @@ function Signup({ onLogin, onSignIn }) {
 
     try {
       const response = await fetch(
-        `${getApiUrl()}/api/auth/signup`,
+        `${getApiUrl()}/api/auth/send-verification`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            name,
             email,
-            password,
           }),
         }
       );
@@ -34,21 +32,13 @@ function Signup({ onLogin, onSignIn }) {
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.message || "Signup failed");
+        setError(result.message || "Failed to send verification code");
         return;
       }
 
-      localStorage.setItem(
-        "token",
-        result.token
-      );
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify(result.user)
-      );
-
-      onLogin();
+      if (onRequireVerification) {
+        onRequireVerification({ name, email, password });
+      }
     } catch (error) {
       console.error(error);
       setError("Unable to connect to server");

@@ -174,6 +174,53 @@ const sendInvitationEmail = async ({
   return data;
 };
 
+const sendVerificationEmail = async ({ email, code }) => {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY is not configured");
+  }
+
+  if (!process.env.EMAIL_FROM) {
+    throw new Error("EMAIL_FROM is not configured");
+  }
+
+  const { data, error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM,
+    to: [email],
+    subject: `${code} is your Sandbox verification code`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <title>Verification Code</title>
+        </head>
+        <body style="margin:0; padding:0; background:#f9fafb; font-family: Arial, sans-serif;">
+          <div style="max-width:500px; margin:40px auto; background:#ffffff; border-radius:12px; padding:32px; border:1px solid #eaecf0;">
+            <h2 style="margin:0 0 12px; color:#101828; font-size:22px;">Verify your email</h2>
+            <p style="color:#475467; font-size:15px; line-height:1.5; margin-bottom:24px;">
+              Your 6-digit email verification code for Sandbox is:
+            </p>
+            <div style="background:#f2f4f7; border-radius:8px; padding:16px; text-align:center; margin-bottom:24px;">
+              <span style="font-size:32px; font-weight:bold; letter-spacing:6px; color:#101828;">${code}</span>
+            </div>
+            <p style="color:#475467; font-size:14px; margin:0;">
+              This code will expire in 10 minutes. If you did not request this, please ignore this email.
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+
+  if (error) {
+    console.error("Resend verification email error:", error);
+    throw new Error(error.message || "Failed to send verification email");
+  }
+
+  return data;
+};
+
 module.exports = {
   sendInvitationEmail,
+  sendVerificationEmail,
 };

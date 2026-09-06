@@ -3,6 +3,8 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
+const VerificationCode = require("../models/VerificationCode");
+const { sendVerificationEmail } = require("../services/emailService");
 const { protect } = require("../middleware/auth");
 
 const router = express.Router();
@@ -22,6 +24,90 @@ const userResponse = (user) => ({
   javascriptScore: user.javascriptScore,
   reactScore: user.reactScore,
   progress: user.progressSummary(),
+});
+
+// @route  POST /api/auth/send-verification
+// @body   { email }
+router.post("/send-verification", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if account already exists
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing) {
+      return res.status(409).json({ success: false, message: "An account with this email already exists" });
+    }
+
+    // Generate 6 digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Remove older codes for this email
+    await VerificationCode.deleteMany({ email: normalizedEmail });
+
+    // Save new code
+    await VerificationCode.create({ email: normalizedEmail, code });
+
+    // Send email via Resend
+    await sendVerificationEmail({ email: normalizedEmail, code });
+
+    return res.json({ success: true, message: "Verification code sent to your email" });
+  } catch (err) {
+    console.error("Error sending verification email:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to send verification code" });
+  }
+});
+
+// @route  POST /api/auth/verify-code
+// @body   { email, code, name, password, role }
+router.post("/verify-code", async (req, res) => {
+  try {
+    const { email, code, name, password, role } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ success: false, message: "Email and verification code are required" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const record = await VerificationCode.findOne({ email: normalizedEmail, code: code.trim() });
+
+    if (!record) {
+      return res.status(400).json({ success: false, message: "Invalid or expired verification code" });
+    }
+
+    // Code is valid - delete it so it can't be reused
+    await VerificationCode.deleteMany({ email: normalizedEmail });
+
+    // Find or create user
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      if (!name || !password) {
+        return res.status(400).json({ success: false, message: "Name and password are required to complete registration" });
+      }
+      user = await User.create({
+        name,
+        email: normalizedEmail,
+        password,
+        role: role === "company" ? "company" : "student",
+      });
+    }
+
+    user.resetDailyIfNeeded();
+    await user.save();
+
+    return res.status(201).json({
+      success: true,
+      token: signToken(user._id),
+      user: userResponse(user),
+    });
+  } catch (err) {
+    console.error("Error verifying code:", err);
+    return res.status(500).json({ success: false, message: "Server error during verification" });
+  }
 });
 
 // @route  POST /api/auth/signup

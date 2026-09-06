@@ -9,6 +9,7 @@ function Login({
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -326,77 +327,36 @@ function Login({
 
         <div className="auth-content">
 
-          <h1>Welcome Back</h1>
+          <h1 style={{ fontSize: "32px", fontWeight: "800", textAlign: "center", margin: "0 0 8px" }}>
+            Welcome <span style={{ fontStyle: "italic", color: "#e11d48" }}>back</span>
+          </h1>
 
-          <p className="auth-subtitle">
-            Sign in to continue to Sandbox
+          <p className="auth-subtitle" style={{ textAlign: "center", color: "#64748b", marginBottom: "24px" }}>
+            Log in to your Sandbox account.
           </p>
 
-          <form onSubmit={handleSubmit}>
-
-            <label>Email</label>
-
-            <div className="input-wrapper">
-              <span className="input-icon">
-                ✉
-              </span>
-
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) =>
-                  setEmail(e.target.value)
-                }
-                required
-              />
-            </div>
-
-            <label>Password</label>
-
-            <div className="input-wrapper">
-              <span className="input-icon">
-                🔒
-              </span>
-
-              <input
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) =>
-                  setPassword(e.target.value)
-                }
-                required
-              />
-            </div>
-
-            {error && (
-              <p className="auth-error">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              className="auth-submit"
-              disabled={loading}
-            >
-              {loading ? "Signing In..." : "Sign In"}
-            </button>
-
-          </form>
-
-          <div className="auth-divider">
-            <span></span>
-            <p>OR</p>
-            <span></span>
-          </div>
-
+          {/* TOP GOOGLE BUTTON (WELLFOUND STYLE) */}
           <button
             type="button"
             className="google-button"
             onClick={handleGoogleSignIn}
             disabled={loading}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "10px",
+              padding: "12px",
+              border: "1px solid #cbd5e1",
+              borderRadius: "10px",
+              background: "#ffffff",
+              fontSize: "15px",
+              fontWeight: "600",
+              color: "#0f172a",
+              cursor: "pointer",
+              marginBottom: "20px"
+            }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -407,21 +367,119 @@ function Login({
             <span>Continue with Google</span>
           </button>
 
-          <p className="switch-auth">
-            Don't have an account?{" "}
+          <div style={{ display: "flex", alignItems: "center", margin: "20px 0", color: "#94a3b8", fontSize: "13px" }}>
+            <div style={{ flex: 1, height: "1px", background: "#e2e8f0" }}></div>
+            <span style={{ padding: "0 12px" }}>or continue with email</span>
+            <div style={{ flex: 1, height: "1px", background: "#e2e8f0" }}></div>
+          </div>
+
+          {error && (
+            <div style={{
+              background: "#fff1f2",
+              border: "1px solid #fecdd3",
+              color: "#be123c",
+              borderRadius: "10px",
+              padding: "14px",
+              fontSize: "14px",
+              textAlign: "center",
+              marginBottom: "16px",
+              fontWeight: "500"
+            }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+
+            <label style={{ display: "block", fontSize: "14px", fontWeight: "600", color: "#0f172a", marginBottom: "6px" }}>Email</label>
+
+            <div className="input-wrapper" style={{ marginBottom: "16px" }}>
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) =>
+                  setEmail(e.target.value)
+                }
+                style={{ width: "100%", padding: "12px 14px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "15px", outline: "none" }}
+                required
+              />
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <label style={{ fontSize: "14px", fontWeight: "600", color: "#0f172a" }}>Password</label>
+              <span style={{ fontSize: "13px", color: "#64748b", textDecoration: "underline", cursor: "pointer" }}>Forgot password?</span>
+            </div>
+
+            <div className="input-wrapper" style={{ position: "relative", marginBottom: "20px" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) =>
+                  setPassword(e.target.value)
+                }
+                style={{ width: "100%", padding: "12px 14px", paddingRight: "60px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "15px", outline: "none", boxSizing: "border-box" }}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  color: "#475569",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  cursor: "pointer"
+                }}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              className="auth-submit"
+              disabled={loading}
+              style={{
+                width: "100%",
+                background: "#0f172a",
+                color: "#ffffff",
+                padding: "14px",
+                borderRadius: "10px",
+                fontSize: "16px",
+                fontWeight: "700",
+                border: "none",
+                cursor: loading ? "not-allowed" : "pointer"
+              }}
+            >
+              {loading ? "Logging in..." : "Log in"}
+            </button>
+
+          </form>
+
+          <p className="switch-auth" style={{ textAlign: "center", marginTop: "20px", fontSize: "14px", color: "#64748b" }}>
+            New to Sandbox?{" "}
             <button
               type="button"
               onClick={onSignup}
+              style={{ background: "none", border: "none", color: "#0f172a", fontWeight: "700", textDecoration: "underline", cursor: "pointer" }}
             >
-              Sign up
+              Create an account
             </button>
           </p>
 
-          <p className="switch-auth">
+          <p className="switch-auth" style={{ textAlign: "center", marginTop: "10px", fontSize: "13px", color: "#64748b" }}>
             Are you a company?{" "}
             <button
               type="button"
               onClick={onCompanySignup}
+              style={{ background: "none", border: "none", color: "#2563eb", fontWeight: "600", cursor: "pointer" }}
             >
               Create company account
             </button>
