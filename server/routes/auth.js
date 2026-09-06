@@ -52,20 +52,25 @@ router.post("/send-verification", async (req, res) => {
     // Save new code
     await VerificationCode.create({ email: normalizedEmail, code });
 
-    // Send email via Resend
-    try {
-      await sendVerificationEmail({ email: normalizedEmail, code });
-    } catch (emailErr) {
-      console.warn("Resend email delivery warning:", emailErr.message);
-      if (!emailErr.message?.includes("testing emails")) {
-        throw emailErr;
-      }
-    }
+    // Respond immediately so the user doesn't wait
+    res.json({ success: true, message: "Verification code sent to your email" });
 
-    return res.json({ success: true, message: "Verification code sent to your email" });
+    // Send email in background (non-blocking) with a 12s timeout
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Email send timeout")), 12000)
+    );
+
+    Promise.race([sendVerificationEmail({ email: normalizedEmail, code }), timeout])
+      .then(() => console.log(`Verification email sent to ${normalizedEmail}`))
+      .catch((emailErr) => {
+        console.warn("Email delivery warning (non-blocking):", emailErr.message);
+      });
+
   } catch (err) {
-    console.error("Error sending verification email:", err);
-    return res.status(500).json({ success: false, message: err.message || "Failed to send verification code" });
+    console.error("Error in send-verification:", err);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to send verification code" });
+    }
   }
 });
 

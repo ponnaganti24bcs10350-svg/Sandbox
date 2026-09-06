@@ -11,8 +11,11 @@ const createGmailTransporter = () => {
       service: "gmail",
       auth: {
         user,
-        pass: pass.replace(/\s+/g, ""), // Strip spaces if user pasted password with spaces
+        pass: pass.replace(/\s+/g, ""),
       },
+      connectionTimeout: 8000,  // 8 seconds to connect
+      greetingTimeout: 8000,    // 8 seconds for SMTP greeting
+      socketTimeout: 10000,     // 10 seconds for socket operations
     });
   }
   return null;
