@@ -42,11 +42,7 @@ export default function EmailVerification({
       }
 
       setSent(true);
-      if (data.testCode) {
-        setMessage(`Code: ${data.testCode} (sent for testing)`);
-      } else {
-        setMessage(`Verification code sent to ${email}`);
-      }
+      setMessage(data.message || `Verification code sent to ${email}`);
     } catch (err) {
       console.error(err);
       setError(err.message || "Unable to send verification code");
