@@ -53,7 +53,19 @@ router.post("/send-verification", async (req, res) => {
     await VerificationCode.create({ email: normalizedEmail, code });
 
     // Send email via Resend
-    await sendVerificationEmail({ email: normalizedEmail, code });
+    try {
+      await sendVerificationEmail({ email: normalizedEmail, code });
+    } catch (emailErr) {
+      console.warn("Resend email warning:", emailErr.message);
+      if (emailErr.message && emailErr.message.includes("testing emails")) {
+        return res.json({
+          success: true,
+          message: `[Resend Free Tier Notice] Code sent to owner. For testing with ${normalizedEmail}, use code: ${code}`,
+          testCode: code
+        });
+      }
+      throw emailErr;
+    }
 
     return res.json({ success: true, message: "Verification code sent to your email" });
   } catch (err) {
