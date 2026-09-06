@@ -18,7 +18,6 @@ export default function EmailVerification({
 
   const API_URL = getApiUrl();
 
-  // Auto-send verification code on load if email is present
   useEffect(() => {
     if (email && !sent) {
       handleSendCode();
@@ -43,7 +42,11 @@ export default function EmailVerification({
       }
 
       setSent(true);
-      setMessage(`A 6-digit verification code has been sent to ${email}`);
+      if (data.testCode) {
+        setMessage(`Code: ${data.testCode} (sent for testing)`);
+      } else {
+        setMessage(`Verification code sent to ${email}`);
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || "Unable to send verification code");
@@ -55,7 +58,7 @@ export default function EmailVerification({
   async function handleVerify(e) {
     e.preventDefault();
     if (!code || code.trim().length === 0) {
-      setError("Please enter the 6-digit verification code.");
+      setError("Please enter the verification code.");
       return;
     }
 
@@ -94,151 +97,85 @@ export default function EmailVerification({
   }
 
   return (
-    <div className="auth-page verification-page" style={{ background: "#f3f5f8", minHeight: "100vh", padding: "40px 20px" }}>
-      {/* WELLFOUND STEP BAR */}
-      <div style={{
-        maxWidth: "680px",
-        margin: "0 auto 40px",
-        background: "#ffffff",
-        borderRadius: "30px",
-        padding: "12px 24px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        border: "1px solid #e2e8f0",
-        fontSize: "14px",
-        color: "#64748b"
-      }}>
-        <span style={{ color: "#2563eb", fontWeight: "600", borderBottom: "2px solid #2563eb", paddingBottom: "2px" }}>
-          Email Verification
-        </span>
-        <span>—</span>
-        <span>Profile</span>
-        <span>—</span>
-        <span>Preferences</span>
-        <span>—</span>
-        <span>Culture</span>
-        <span>—</span>
-        <span>Resume/CV</span>
-        <span>—</span>
-        <span style={{ color: "#16a34a" }}>✓ Done</span>
-      </div>
-
-      {/* HEADER */}
-      <div style={{ textAlign: "center", marginBottom: "32px" }}>
-        <h1 style={{ fontSize: "36px", fontWeight: "800", color: "#0f172a", margin: "0 0 12px" }}>
-          Verify your email
-        </h1>
-        <p style={{ fontSize: "16px", color: "#475569", margin: 0 }}>
-          Before completing your account setup, we need to verify your email address.
-        </p>
-      </div>
-
-      {/* CARD */}
-      <div style={{
-        maxWidth: "520px",
-        margin: "0 auto",
-        background: "#ffffff",
-        borderRadius: "16px",
-        padding: "40px",
-        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)",
-        border: "1px solid #e2e8f0",
-        textAlign: "center"
-      }}>
-        <p style={{ fontSize: "15px", color: "#334155", marginBottom: "20px" }}>
-          Click the button below to receive a verification code by email at <strong>{email}</strong>
-        </p>
-
-        <button
-          type="button"
-          onClick={handleSendCode}
-          disabled={sending}
-          style={{
-            background: "#2563eb",
-            color: "#ffffff",
-            border: "none",
-            borderRadius: "24px",
-            padding: "12px 32px",
-            fontSize: "15px",
-            fontWeight: "600",
-            cursor: sending ? "not-allowed" : "pointer",
-            marginBottom: "28px",
-            transition: "all 0.2s ease"
-          }}
-        >
-          {sending ? "Sending Code..." : sent ? "Resend Verification Code" : "Send me a Verification Code"}
-        </button>
-
-        {message && (
-          <p style={{ background: "#f0fdf4", color: "#166534", padding: "12px", borderRadius: "8px", fontSize: "14px", marginBottom: "20px" }}>
-            {message}
-          </p>
-        )}
-
-        {error && (
-          <p style={{ background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca", padding: "12px", borderRadius: "8px", fontSize: "14px", marginBottom: "20px" }}>
-            {error}
-          </p>
-        )}
-
-        <form onSubmit={handleVerify}>
-          <div style={{ marginBottom: "24px" }}>
-            <input
-              type="text"
-              placeholder="Enter your verification code here..."
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px 18px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                fontSize: "16px",
-                textAlign: "center",
-                letterSpacing: "2px",
-                outline: "none",
-                boxSizing: "border-box"
-              }}
-              required
-            />
+    <div className="auth-page">
+      {/* MOVING BACKGROUND */}
+      <div className="auth-background">
+        <div className="background-track">
+          <div className="bg-column column-up">
+            <img src="/images/sunset.jpg" alt="" />
+            <img src="/images/camera.jpg" alt="" />
+            <img src="/images/ocean.jpg" alt="" />
+            <img src="/images/sunset.jpg" alt="" />
           </div>
+          <div className="bg-column column-down">
+            <img src="/images/ocean.jpg" alt="" />
+            <img src="/images/sunset.jpg" alt="" />
+            <img src="/images/camera.jpg" alt="" />
+            <img src="/images/ocean.jpg" alt="" />
+          </div>
+          <div className="bg-column column-up-slow">
+            <img src="/images/camera.jpg" alt="" />
+            <img src="/images/ocean.jpg" alt="" />
+            <img src="/images/sunset.jpg" alt="" />
+            <img src="/images/camera.jpg" alt="" />
+          </div>
+        </div>
+      </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: "100%",
-              background: "#0f172a",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "8px",
-              padding: "14px",
-              fontSize: "16px",
-              fontWeight: "600",
-              cursor: loading ? "not-allowed" : "pointer"
-            }}
-          >
-            {loading ? "Verifying..." : "Verify & Create Account"}
-          </button>
-        </form>
+      {/* DARK OVERLAY */}
+      <div className="background-overlay"></div>
 
-        {onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#64748b",
-              fontSize: "14px",
-              marginTop: "20px",
-              cursor: "pointer",
-              textDecoration: "underline"
-            }}
-          >
-            Back to Sign Up
-          </button>
-        )}
+      {/* VERIFICATION CARD */}
+      <div className="auth-card">
+        <div className="auth-content">
+          <h1>Verify Email</h1>
+          <p className="auth-subtitle">
+            Enter the verification code sent to <br />
+            <strong style={{ color: "#38bdf8" }}>{email}</strong>
+          </p>
+
+          <form onSubmit={handleVerify}>
+            <label>Verification Code</label>
+            <div className="input-wrapper">
+              <span className="input-icon">🔑</span>
+              <input
+                type="text"
+                placeholder="Enter 6-digit code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                maxLength={6}
+                required
+              />
+            </div>
+
+            {message && (
+              <p className="auth-subtitle" style={{ color: "#4ade80", marginTop: "14px", marginBottom: 0 }}>
+                {message}
+              </p>
+            )}
+
+            {error && <p className="auth-error">{error}</p>}
+
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? "Verifying..." : "Verify & Create Account"}
+            </button>
+          </form>
+
+          <p className="switch-auth" style={{ marginTop: "24px" }}>
+            Didn't receive code?{" "}
+            <button type="button" onClick={handleSendCode} disabled={sending}>
+              {sending ? "Sending..." : "Resend code"}
+            </button>
+          </p>
+
+          {onBack && (
+            <p className="switch-auth" style={{ marginTop: "8px" }}>
+              <button type="button" onClick={onBack}>
+                ← Back to Sign Up
+              </button>
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
