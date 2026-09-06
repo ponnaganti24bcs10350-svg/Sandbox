@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getApiUrl } from "../config/api";
 
 function PracticedChallenges({ onPractice }) {
   const [challenges, setChallenges] = useState([]);
@@ -12,8 +13,9 @@ function PracticedChallenges({ onPractice }) {
         const token = localStorage.getItem("token");
 
         const response = await fetch(
-          "https://sandbox-11.onrender.com/api/progress/practiced",
+          `${getApiUrl()}/api/progress/practiced`,
           {
+
             headers: {
               Authorization: `Bearer ${token}`,
             },

@@ -56,7 +56,7 @@ const createInvitation = async (req, res) => {
     });
 
     try {
-      // Send email to candidate's registered Sandbox email
+      // Send email to candidate's registered Sandbox email if configured
       await sendInvitationEmail({
         candidateEmail: candidate.email,
         candidateName: candidate.name,
@@ -64,14 +64,9 @@ const createInvitation = async (req, res) => {
         challengeTitle: position,
       });
     } catch (emailError) {
-      // Remove invitation if email could not be sent
-      await Invitation.findByIdAndDelete(invitation._id);
-
-      return res.status(502).json({
-        success: false,
-        message: "Invitation could not be sent. Please try again.",
-      });
+      console.warn("Email service notice:", emailError.message);
     }
+
 
     return res.status(201).json({
       success: true,

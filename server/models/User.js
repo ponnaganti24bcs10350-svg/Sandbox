@@ -71,6 +71,16 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    googleId: {
+      type: String,
+      default: null,
+    },
+
+    avatar: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

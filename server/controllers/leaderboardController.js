@@ -1,32 +1,29 @@
 const User = require("../models/User");
 
 // GET LEADERBOARD
+// Only student accounts appear on the developer leaderboard.
 async function getLeaderboard(req, res) {
   try {
-    const users = await User.find()
+    const users = await User.find({
+      role: "student",
+    })
       .select(
-        "name javascriptScore reactScore"
+        "name javascriptScore reactScore totalSolved"
       )
       .lean();
 
-    const sortedUsers = users.sort(
-      (a, b) => {
-        const aOverall =
-          (a.javascriptScore +
-            a.reactScore) /
-          2;
+    const sortedUsers = users.sort((a, b) => {
+      const aOverall =
+        (a.javascriptScore + a.reactScore) / 2;
 
-        const bOverall =
-          (b.javascriptScore +
-            b.reactScore) /
-          2;
+      const bOverall =
+        (b.javascriptScore + b.reactScore) / 2;
 
-        return bOverall - aOverall;
-      }
-    );
+      return bOverall - aOverall;
+    });
 
-    const rankedUsers =
-      sortedUsers.map((user, index) => {
+    const rankedUsers = sortedUsers.map(
+      (user, index) => {
         const overallScore = Math.round(
           (user.javascriptScore +
             user.reactScore) /
@@ -43,11 +40,16 @@ async function getLeaderboard(req, res) {
           javascriptScore:
             user.javascriptScore,
 
-          reactScore: user.reactScore,
+          reactScore:
+            user.reactScore,
+
+          totalSolved:
+            user.totalSolved,
 
           overallScore,
         };
-      });
+      }
+    );
 
     return res.json({
       success: true,
@@ -67,6 +69,8 @@ async function getLeaderboard(req, res) {
 }
 
 // MANUAL UPDATE
+// Kept for future admin functionality.
+// Do not expose this endpoint publicly.
 async function updateUserScore(req, res) {
   try {
     const {
@@ -102,12 +106,21 @@ async function updateUserScore(req, res) {
       success: true,
       message:
         "Score updated successfully",
+
       data: {
         userId: user._id.toString(),
+
         username: user.name,
+
         javascriptScore:
           user.javascriptScore,
-        reactScore: user.reactScore,
+
+        reactScore:
+          user.reactScore,
+
+        totalSolved:
+          user.totalSolved,
+
         overallScore: Math.round(
           (user.javascriptScore +
             user.reactScore) /

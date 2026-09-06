@@ -3,31 +3,36 @@ import { useEffect, useState } from "react";
 import FileExplorer from "../components/FileExplorer";
 import CodeEditor from "../components/CodeEditor";
 import TestResults from "../components/TestResults";
+import { getApiUrl } from "../config/api";
 
-const CHALLENGE_CACHE_KEY = "currentChallenge";
+const API_URL = getApiUrl();
 
-function ChallengeWorkspace({ selectedChallenge }) {
-  // ------------------------------------
-  // INITIAL STATE FROM CACHE
-  // ------------------------------------
 
-  const [challenge, setChallenge] = useState(() => {
-    if (selectedChallenge) {
-      return selectedChallenge;
-    }
+const CHALLENGE_CACHE_KEY =
+  "currentChallenge";
 
-    try {
-      const cachedChallenge = sessionStorage.getItem(
-        CHALLENGE_CACHE_KEY
-      );
+function ChallengeWorkspace({
+  selectedChallenge,
+}) {
+  const [challenge, setChallenge] =
+    useState(() => {
+      if (selectedChallenge) {
+        return selectedChallenge;
+      }
 
-      return cachedChallenge
-        ? JSON.parse(cachedChallenge)
-        : null;
-    } catch {
-      return null;
-    }
-  });
+      try {
+        const cachedChallenge =
+          sessionStorage.getItem(
+            CHALLENGE_CACHE_KEY
+          );
+
+        return cachedChallenge
+          ? JSON.parse(cachedChallenge)
+          : null;
+      } catch {
+        return null;
+      }
+    });
 
   const [terminalHeight, setTerminalHeight] =
     useState(150);
@@ -36,21 +41,27 @@ function ChallengeWorkspace({ selectedChallenge }) {
     useState(() => {
       if (selectedChallenge?.files) {
         return (
-          Object.keys(selectedChallenge.files)[0] || ""
+          Object.keys(
+            selectedChallenge.files
+          )[0] || ""
         );
       }
 
       try {
-        const cachedChallenge = sessionStorage.getItem(
-          CHALLENGE_CACHE_KEY
-        );
+        const cachedChallenge =
+          sessionStorage.getItem(
+            CHALLENGE_CACHE_KEY
+          );
 
         if (cachedChallenge) {
-          const parsed = JSON.parse(cachedChallenge);
+          const parsed =
+            JSON.parse(cachedChallenge);
 
           if (parsed?.files) {
             return (
-              Object.keys(parsed.files)[0] || ""
+              Object.keys(
+                parsed.files
+              )[0] || ""
             );
           }
         }
@@ -61,7 +72,8 @@ function ChallengeWorkspace({ selectedChallenge }) {
       return "";
     });
 
-  const [result, setResult] = useState(null);
+  const [result, setResult] =
+    useState(null);
 
   const [isRunning, setIsRunning] =
     useState(false);
@@ -69,11 +81,9 @@ function ChallengeWorkspace({ selectedChallenge }) {
   const [isNavigating, setIsNavigating] =
     useState(false);
 
-  // ------------------------------------
-  // SAVE CHALLENGE TO CACHE
-  // ------------------------------------
-
-  function saveChallengeToCache(challengeData) {
+  function saveChallengeToCache(
+    challengeData
+  ) {
     try {
       sessionStorage.setItem(
         CHALLENGE_CACHE_KEY,
@@ -92,25 +102,24 @@ function ChallengeWorkspace({ selectedChallenge }) {
   // ------------------------------------
 
   useEffect(() => {
-    // PRACTICE AGAIN
     if (selectedChallenge) {
       setChallenge(selectedChallenge);
       setResult(null);
 
-      const firstFile = Object.keys(
-        selectedChallenge.files
-      )[0];
+      const firstFile =
+        Object.keys(
+          selectedChallenge.files || {}
+        )[0];
 
-      if (firstFile) {
-        setSelectedFile(firstFile);
-      }
+      setSelectedFile(firstFile || "");
 
-      saveChallengeToCache(selectedChallenge);
+      saveChallengeToCache(
+        selectedChallenge
+      );
 
       return;
     }
 
-    // FETCH CURRENT CHALLENGE
     async function fetchChallenge() {
       try {
         const token =
@@ -123,24 +132,40 @@ function ChallengeWorkspace({ selectedChallenge }) {
         }
 
         const response = await fetch(
-          "https://sandbox-11.onrender.com/api/progress/current",
+          `${API_URL}/api/progress/current`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization:
+                `Bearer ${token}`,
             },
           }
         );
 
-        const data = await response.json();
+        const data =
+          await response.json();
 
-        if (!response.ok || !data.success) {
+        if (!response.ok) {
           throw new Error(
             data.message ||
               "Failed to fetch challenge"
           );
         }
 
-        const challengeData = data.data;
+        // No challenges remaining
+        if (!data.success) {
+          setChallenge(null);
+          setResult({
+            passed: false,
+            message:
+              data.message ||
+              "No challenge available.",
+          });
+
+          return;
+        }
+
+        const challengeData =
+          data.data;
 
         if (!challengeData?.files) {
           throw new Error(
@@ -148,33 +173,38 @@ function ChallengeWorkspace({ selectedChallenge }) {
           );
         }
 
-        // Update silently
-        setChallenge(challengeData);
+        setChallenge(
+          challengeData
+        );
+
         setResult(null);
 
-        saveChallengeToCache(challengeData);
+        saveChallengeToCache(
+          challengeData
+        );
 
-        const firstFile = Object.keys(
-          challengeData.files
-        )[0];
+        const firstFile =
+          Object.keys(
+            challengeData.files
+          )[0];
 
-        if (firstFile) {
-          setSelectedFile(firstFile);
-        }
+        setSelectedFile(
+          firstFile || ""
+        );
       } catch (error) {
         console.error(
           "Failed to fetch challenge:",
           error
         );
 
-        if (!challenge) {
-          setResult({
-            passed: false,
-            message:
-              error.message ||
-              "Failed to load challenge",
-          });
-        }
+        setChallenge(null);
+
+        setResult({
+          passed: false,
+          message:
+            error.message ||
+            "Failed to load challenge",
+        });
       }
     }
 
@@ -193,13 +223,18 @@ function ChallengeWorkspace({ selectedChallenge }) {
 
       const updatedChallenge = {
         ...previous,
+
         files: {
           ...previous.files,
-          [selectedFile]: newCode || "",
+
+          [selectedFile]:
+            newCode || "",
         },
       };
 
-      saveChallengeToCache(updatedChallenge);
+      saveChallengeToCache(
+        updatedChallenge
+      );
 
       return updatedChallenge;
     });
@@ -209,8 +244,13 @@ function ChallengeWorkspace({ selectedChallenge }) {
   // LOAD NEXT / PREVIOUS
   // ------------------------------------
 
-  async function loadChallenge(direction) {
-    if (isNavigating || isRunning) {
+  async function loadChallenge(
+    direction
+  ) {
+    if (
+      isNavigating ||
+      isRunning
+    ) {
       return;
     }
 
@@ -228,15 +268,17 @@ function ChallengeWorkspace({ selectedChallenge }) {
       }
 
       const response = await fetch(
-        `https://sandbox-11.onrender.com/api/progress/${direction}`,
+        `${API_URL}/api/progress/${direction}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization:
+              `Bearer ${token}`,
           },
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -246,15 +288,20 @@ function ChallengeWorkspace({ selectedChallenge }) {
       }
 
       if (!data.success) {
+        setChallenge(null);
+
         setResult({
           passed: false,
-          message: data.message,
+          message:
+            data.message ||
+            `No ${direction} challenge available.`,
         });
 
         return;
       }
 
-      const challengeData = data.data;
+      const challengeData =
+        data.data;
 
       if (!challengeData?.files) {
         throw new Error(
@@ -262,17 +309,22 @@ function ChallengeWorkspace({ selectedChallenge }) {
         );
       }
 
-      setChallenge(challengeData);
+      setChallenge(
+        challengeData
+      );
 
-      saveChallengeToCache(challengeData);
+      saveChallengeToCache(
+        challengeData
+      );
 
-      const firstFile = Object.keys(
-        challengeData.files
-      )[0];
+      const firstFile =
+        Object.keys(
+          challengeData.files
+        )[0];
 
-      if (firstFile) {
-        setSelectedFile(firstFile);
-      }
+      setSelectedFile(
+        firstFile || ""
+      );
     } catch (error) {
       console.error(
         `Failed to load ${direction} challenge:`,
@@ -315,7 +367,7 @@ function ChallengeWorkspace({ selectedChallenge }) {
       }
 
       const response = await fetch(
-        "https://sandbox-11.onrender.com/api/challenges/run",
+        `${API_URL}/api/challenges/run`,
         {
           method: "POST",
 
@@ -350,22 +402,23 @@ function ChallengeWorkspace({ selectedChallenge }) {
       setResult(data);
 
       // ------------------------------------
-      // UPDATE USER ONLY FOR NEW SOLVE
+      // UPDATE USER AFTER NEW SOLVE
       // ------------------------------------
 
       if (
         data.passed &&
         data.newlySolved
       ) {
-        const meResponse = await fetch(
-          "https://sandbox-11.onrender.com/api/auth/me",
-          {
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-            },
-          }
-        );
+        const meResponse =
+          await fetch(
+            `${API_URL}/api/auth/me`,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+            }
+          );
 
         const meData =
           await meResponse.json();
@@ -452,7 +505,9 @@ function ChallengeWorkspace({ selectedChallenge }) {
         newHeight >= 70 &&
         newHeight <= 500
       ) {
-        setTerminalHeight(newHeight);
+        setTerminalHeight(
+          newHeight
+        );
       }
     }
 
@@ -480,13 +535,34 @@ function ChallengeWorkspace({ selectedChallenge }) {
   }
 
   // ------------------------------------
-  // NO CHALLENGE YET
+  // NO CHALLENGE
   // ------------------------------------
 
   if (!challenge) {
     return (
       <div className="workspace">
-        <div className="workspace-content" />
+
+        <div className="workspace-content">
+
+          <div
+            className="challenge-panel"
+            style={{
+              margin: "auto",
+              maxWidth: "600px",
+            }}
+          >
+            <h2>
+              No Challenge Available
+            </h2>
+
+            <p>
+              {result?.message ||
+                "There are no challenges available right now."}
+            </p>
+          </div>
+
+        </div>
+
       </div>
     );
   }
@@ -502,20 +578,18 @@ function ChallengeWorkspace({ selectedChallenge }) {
 
       <header className="topbar">
 
-        {/* CHALLENGE NAME */}
-
         <div className="challenge-name">
           {challenge.title}
         </div>
-
-        {/* ACTIONS */}
 
         <div className="topbar-actions">
 
           <button
             className="nav-button"
             onClick={() =>
-              loadChallenge("previous")
+              loadChallenge(
+                "previous"
+              )
             }
             disabled={
               isNavigating ||
@@ -528,7 +602,9 @@ function ChallengeWorkspace({ selectedChallenge }) {
           <button
             className="nav-button"
             onClick={() =>
-              loadChallenge("next")
+              loadChallenge(
+                "next"
+              )
             }
             disabled={
               isNavigating ||
@@ -552,6 +628,7 @@ function ChallengeWorkspace({ selectedChallenge }) {
           </button>
 
         </div>
+
       </header>
 
       {/* MAIN CONTENT */}
@@ -562,8 +639,12 @@ function ChallengeWorkspace({ selectedChallenge }) {
 
         <div className="sidebar">
           <FileExplorer
-            files={challenge.files}
-            selectedFile={selectedFile}
+            files={
+              challenge.files
+            }
+            selectedFile={
+              selectedFile
+            }
             onSelectFile={
               setSelectedFile
             }
@@ -578,7 +659,9 @@ function ChallengeWorkspace({ selectedChallenge }) {
             {challenge.title}
           </h2>
 
-          <h3>Problem</h3>
+          <h3>
+            Problem
+          </h3>
 
           <p>
             {challenge.description}
@@ -590,8 +673,13 @@ function ChallengeWorkspace({ selectedChallenge }) {
 
           <ul>
             {challenge.requirements.map(
-              (requirement, index) => (
-                <li key={index}>
+              (
+                requirement,
+                index
+              ) => (
+                <li
+                  key={index}
+                >
                   {requirement}
                 </li>
               )
@@ -638,7 +726,9 @@ function ChallengeWorkspace({ selectedChallenge }) {
 
       <div
         className="resize-handle"
-        onMouseDown={startResize}
+        onMouseDown={
+          startResize
+        }
       />
 
       {/* TERMINAL */}
@@ -650,12 +740,10 @@ function ChallengeWorkspace({ selectedChallenge }) {
             `${terminalHeight}px`,
         }}
       >
-
         <TestResults
           result={result}
           isRunning={isRunning}
         />
-
       </div>
 
     </div>

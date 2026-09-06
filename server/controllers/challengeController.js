@@ -7,7 +7,10 @@ const testChallenge3 = require("../tests/challenge3.test");
 
 async function runChallenge(req, res) {
   try {
-    const { challengeId, files } = req.body;
+    const {
+      challengeId,
+      files,
+    } = req.body;
 
     const userId = req.user._id;
 
@@ -76,31 +79,30 @@ async function runChallenge(req, res) {
       // ------------------------------------
 
       if (!alreadySolved) {
+        // This also enforces the daily limit.
         user.recordSolve();
 
         user.solvedChallenges.push(
           challengeId
         );
 
-        if (challengeId === "1") {
-          user.reactScore = Math.min(
-            100,
-            user.reactScore + 5
-          );
-        }
+        // ------------------------------------
+        // SCORE UPDATE
+        // ------------------------------------
 
-        if (challengeId === "2") {
-          user.javascriptScore = Math.min(
-            100,
-            user.javascriptScore + 5
-          );
-        }
-
-        if (challengeId === "3") {
-          user.reactScore = Math.min(
-            100,
-            user.reactScore + 5
-          );
+        // These first challenges are
+        // primarily JavaScript/backend
+        // engineering challenges.
+        if (
+          challengeId === "1" ||
+          challengeId === "2" ||
+          challengeId === "3"
+        ) {
+          user.javascriptScore =
+            Math.min(
+              100,
+              user.javascriptScore + 5
+            );
         }
 
         await user.save();
@@ -116,6 +118,7 @@ async function runChallenge(req, res) {
 
     return res.json({
       ...result,
+
       newlySolved,
 
       progress: updatedUser

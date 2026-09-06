@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getApiUrl } from "../config/api";
 
 function Leaderboard() {
   const [users, setUsers] = useState([]);
@@ -10,8 +11,9 @@ function Leaderboard() {
         setError("");
 
         const response = await fetch(
-          "https://sandbox-11.onrender.com/api/leaderboard"
+          `${getApiUrl()}/api/leaderboard`
         );
+
 
         const result = await response.json();
 

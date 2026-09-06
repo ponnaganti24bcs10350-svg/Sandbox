@@ -489,59 +489,44 @@ body {
 /* =========================
    LEADERBOARD
 ========================= */
-
 .leaderboard-page {
   min-height: 100vh;
-
+  width: 100%;
   background: #1e1e1e;
-
   padding: 80px 20px 50px;
-
-  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .leaderboard-container {
   max-width: 900px;
-
   margin: 0 auto;
 }
 
 .leaderboard-title {
   text-align: center;
-
   font-size: 32px;
-
   margin-bottom: 10px;
 }
 
 .leaderboard-subtitle {
   text-align: center;
-
   color: #aaaaaa;
-
   margin-bottom: 40px;
 }
 
 .leaderboard-list {
   display: flex;
-
   flex-direction: column;
-
   gap: 15px;
 }
 
 .leaderboard-card {
   background: #252526;
-
   border: 1px solid #3c3c3c;
   border-radius: 10px;
-
   padding: 20px;
-
   display: flex;
-
   align-items: center;
-
   gap: 20px;
 }
 
@@ -551,23 +536,18 @@ body {
 
 .rank {
   font-size: 24px;
-
   font-weight: bold;
-
   min-width: 70px;
-
   text-align: center;
 }
 
 .user-info {
   flex: 1;
-
   min-width: 0;
 }
 
 .username {
   font-size: 20px;
-
   margin-bottom: 15px;
 }
 
@@ -577,56 +557,76 @@ body {
 
 .skill-label {
   display: flex;
-
   justify-content: space-between;
-
   font-size: 13px;
-
   margin-bottom: 5px;
-
   color: #cccccc;
 }
 
 .progress-bar {
   height: 8px;
-
   background: #3c3c3c;
-
   border-radius: 5px;
-
   overflow: hidden;
 }
 
 .progress {
   height: 100%;
-
   background: #007acc;
-
   border-radius: 5px;
 }
 
 .overall-score {
   text-align: center;
-
   min-width: 100px;
 }
 
 .score-number {
   font-size: 28px;
-
   font-weight: bold;
-
   color: #007acc;
 }
 
 .score-label {
   font-size: 12px;
-
   color: #aaaaaa;
-
   margin-top: 5px;
 }
 
+
+/* MOBILE */
+
+@media (max-width: 700px) {
+  .leaderboard-page {
+    padding: 70px 12px 30px;
+  }
+
+  .leaderboard-title {
+    font-size: 26px;
+  }
+
+  .leaderboard-card {
+    padding: 15px;
+    gap: 12px;
+  }
+
+  .rank {
+    min-width: 45px;
+    font-size: 18px;
+  }
+
+  .username {
+    font-size: 16px;
+  }
+
+  .overall-score {
+    min-width: 70px;
+  }
+
+  .score-number {
+    font-size: 22px;
+  }
+}
 
 /* =========================
    PRACTICED CHALLENGES
@@ -1591,11 +1591,58 @@ body {
    ========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
-
   .column-up,
   .column-down,
   .column-up-slow {
     animation: none;
   }
-
 }
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #1e1e1e;
+  color: #ffffff;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* WORKSPACE RESPONSIVENESS */
+@media (max-width: 900px) {
+  .topbar {
+    padding: 0 16px 0 140px;
+  }
+
+  .workspace-content {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar,
+  .challenge-panel {
+    width: 100%;
+    min-width: 100%;
+    max-height: 240px;
+    border-right: none;
+    border-bottom: 1px solid #3c3c3c;
+  }
+
+  .editor-area {
+    min-height: 350px;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    padding: 0 12px 0 120px;
+    font-size: 13px;
+  }
+
+  .challenge-name {
+    display: none;
+  }
+}
+

@@ -1,9 +1,12 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
 const { protect } = require("../middleware/auth");
 
 const router = express.Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -15,6 +18,7 @@ const userResponse = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  avatar: user.avatar || null,
   javascriptScore: user.javascriptScore,
   reactScore: user.reactScore,
   progress: user.progressSummary(),
@@ -81,6 +85,83 @@ router.post("/login", async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Server error during login" });
+  }
+});
+
+// @route  POST /api/auth/google
+// @body   { credential, email, name, picture, googleId }
+router.post("/google", async (req, res) => {
+  try {
+    const { credential, email: bodyEmail, name: bodyName, picture: bodyPicture, googleId: bodyGoogleId } = req.body;
+    let email = bodyEmail;
+    let name = bodyName;
+    let picture = bodyPicture;
+    let googleId = bodyGoogleId;
+
+    if (credential) {
+      try {
+        const ticket = await googleClient.verifyIdToken({
+          idToken: credential,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        email = payload.email;
+        name = payload.name;
+        picture = payload.picture;
+        googleId = payload.sub;
+      } catch (verifyErr) {
+        const decoded = jwt.decode(credential);
+        if (decoded && decoded.email) {
+          email = decoded.email;
+          name = decoded.name || name;
+          picture = decoded.picture || picture;
+          googleId = decoded.sub || googleId;
+        }
+      }
+    }
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required for Google authentication" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      const randomPassword = crypto.randomBytes(16).toString("hex");
+      user = await User.create({
+        name: name || normalizedEmail.split("@")[0],
+        email: normalizedEmail,
+        password: randomPassword,
+        googleId: googleId || null,
+        avatar: picture || null,
+        role: "student",
+      });
+    } else {
+      let updated = false;
+      if (googleId && !user.googleId) {
+        user.googleId = googleId;
+        updated = true;
+      }
+      if (picture && !user.avatar) {
+        user.avatar = picture;
+        updated = true;
+      }
+      if (updated) {
+        await user.save();
+      }
+    }
+
+    if (user.resetDailyIfNeeded()) await user.save();
+
+    return res.json({
+      success: true,
+      token: signToken(user._id),
+      user: userResponse(user),
+    });
+  } catch (err) {
+    console.error("Google Auth Error:", err);
+    return res.status(500).json({ success: false, message: "Server error during Google authentication" });
   }
 });
 

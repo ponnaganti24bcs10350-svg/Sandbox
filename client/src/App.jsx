@@ -1,16 +1,36 @@
 import { useEffect, useState } from "react";
 
+import CompanyDashboard from "./pages/CompanyDashboard";
 import ChallengeWorkspace from "./pages/ChallengeWorkspace";
 import Leaderboard from "./pages/Leaderboard";
 import PracticedChallenges from "./pages/PracticedChallenges";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import CompanySignup from "./pages/CompanySignup";
+import Profile from "./pages/Profile";
+import StudentInvitations from "./pages/StudentInvitations";
+
 
 function App() {
   const [page, setPage] = useState(() => {
     const token = localStorage.getItem("token");
 
-    return token ? "challenge" : "login";
+    if (!token) {
+      return "login";
+    }
+
+    const savedUser =
+      localStorage.getItem("user");
+
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+
+      if (user.role === "company") {
+        return "company";
+      }
+    }
+
+    return "challenge";
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -19,16 +39,15 @@ function App() {
     useState(null);
 
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem("user");
+    const savedUser =
+      localStorage.getItem("user");
 
     return savedUser
       ? JSON.parse(savedUser)
       : null;
   });
 
-  // =========================
-  // KEEP USER PROGRESS UPDATED
-  // =========================
+  /* KEEP USER PROGRESS UPDATED */
 
   useEffect(() => {
     function updateUser() {
@@ -53,35 +72,40 @@ function App() {
     };
   }, []);
 
-  // =========================
-  // NAVIGATION
-  // =========================
+  /* NAVIGATION */
 
   function changePage(newPage) {
     setPage(newPage);
     setMenuOpen(false);
   }
 
-  // =========================
-  // LOGIN
-  // =========================
+  /* LOGIN */
 
   function handleLogin() {
     const savedUser =
       localStorage.getItem("user");
 
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const loggedInUser =
+        JSON.parse(savedUser);
+
+      setUser(loggedInUser);
+      setSelectedChallenge(null);
+      setMenuOpen(false);
+
+      if (loggedInUser.role === "company") {
+        setPage("company");
+      } else {
+        setPage("challenge");
+      }
+
+      return;
     }
 
-    setSelectedChallenge(null);
-    setMenuOpen(false);
     setPage("challenge");
   }
 
-  // =========================
-  // PRACTICE AGAIN
-  // =========================
+  /* PRACTICE AGAIN */
 
   function handlePractice(challenge) {
     setSelectedChallenge(challenge);
@@ -89,9 +113,7 @@ function App() {
     setPage("challenge");
   }
 
-  // =========================
-  // LOGOUT
-  // =========================
+  /* LOGOUT */
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -110,7 +132,12 @@ function App() {
 
       {page === "login" && (
         <Login
-          onSignup={() => setPage("signup")}
+          onSignup={() =>
+            setPage("signup")
+          }
+          onCompanySignup={() =>
+            setPage("company-signup")
+          }
           onLogin={handleLogin}
         />
       )}
@@ -119,14 +146,56 @@ function App() {
 
       {page === "signup" && (
         <Signup
-          onLogin={() => setPage("login")}
+          onLogin={() =>
+            setPage("login")
+          }
+        />
+      )}
+
+      {/* ================= COMPANY SIGNUP ================= */}
+
+      {page === "company-signup" && (
+        <CompanySignup
+          onLogin={() => {
+            const savedUser =
+              localStorage.getItem("user");
+
+            if (savedUser) {
+              setUser(JSON.parse(savedUser));
+            }
+
+            setPage("company");
+          }}
+        />
+      )}
+
+      {/* ================= COMPANY DASHBOARD ================= */}
+
+      {page === "company" && (
+        <CompanyDashboard
+          user={user}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* ================= PROFILE ================= */}
+
+      {page === "profile" && (
+        <Profile
+          user={user}
+          onBack={() =>
+            setPage("challenge")
+          }
         />
       )}
 
       {/* ================= MAIN APP ================= */}
 
       {page !== "login" &&
-        page !== "signup" && (
+        page !== "signup" &&
+        page !== "company-signup" &&
+        page !== "company" &&
+        page !== "profile" && (
           <>
             {/* ================= HEADER ================= */}
 
@@ -137,13 +206,15 @@ function App() {
                 <button
                   className="sandbox-button"
                   onClick={() =>
-                    setMenuOpen((previous) => !previous)
+                    setMenuOpen(
+                      (previous) => !previous
+                    )
                   }
                 >
                   SANDBOX
                 </button>
 
-                {/* DROPDOWN ONLY OPENS WHEN CLICKED */}
+                {/* DROPDOWN */}
 
                 {menuOpen && (
                   <div className="dropdown-menu">
@@ -173,6 +244,22 @@ function App() {
                     </button>
 
                     <button
+                      onClick={() =>
+                        changePage("invitations")
+                      }
+                    >
+                      📩 Invitations
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        changePage("profile")
+                      }
+                    >
+                      👤 Profile
+                    </button>
+
+                    <button
                       onClick={handleLogout}
                     >
                       Logout
@@ -187,6 +274,7 @@ function App() {
 
               {user?.progress && (
                 <div className="user-progress">
+
                   <span className="solved-label">
                     Solved:
                   </span>
@@ -194,6 +282,7 @@ function App() {
                   <span className="solved-count">
                     {user.progress.totalSolved}
                   </span>
+
                 </div>
               )}
 
@@ -220,6 +309,14 @@ function App() {
             {page === "practiced" && (
               <PracticedChallenges
                 onPractice={handlePractice}
+              />
+            )}
+
+            {/* ================= INVITATIONS ================= */}
+
+            {page === "invitations" && (
+              <StudentInvitations
+                onBack={() => changePage("challenge")}
               />
             )}
 

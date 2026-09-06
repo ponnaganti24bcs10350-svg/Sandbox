@@ -26,11 +26,18 @@ function getRandomUnsolvedChallenge(
   solvedIds,
   history
 ) {
-  const availableChallenges = challenges.filter(
+  let availableChallenges = challenges.filter(
     (challenge) =>
       !solvedIds.includes(challenge.challengeId) &&
       !history.includes(challenge.challengeId)
   );
+
+  // Fallback: If all unsolved challenges have been visited in history, allow any unsolved challenge
+  if (availableChallenges.length === 0) {
+    availableChallenges = challenges.filter(
+      (challenge) => !solvedIds.includes(challenge.challengeId)
+    );
+  }
 
   if (availableChallenges.length === 0) {
     return null;
