@@ -1,21 +1,31 @@
 const nodemailer = require("nodemailer");
 const { Resend } = require("resend");
 
-// Create Nodemailer transporter if Gmail credentials exist in environment
+// Create Nodemailer transporter using Brevo SMTP relay
 const createGmailTransporter = () => {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASS;
+  const user = process.env.BREVO_SMTP_USER || process.env.GMAIL_USER;
+  const pass = process.env.BREVO_SMTP_PASS || process.env.GMAIL_APP_PASS;
 
   if (user && pass) {
+    // Use Brevo SMTP relay if Brevo credentials exist, otherwise fall back to Gmail
+    const isBrevo = !!process.env.BREVO_SMTP_USER;
+    if (isBrevo) {
+      return nodemailer.createTransport({
+        host: "smtp-relay.brevo.com",
+        port: 587,
+        secure: false,
+        auth: { user, pass },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
+      });
+    }
     return nodemailer.createTransport({
       service: "gmail",
-      auth: {
-        user,
-        pass: pass.replace(/\s+/g, ""),
-      },
-      connectionTimeout: 8000,  // 8 seconds to connect
-      greetingTimeout: 8000,    // 8 seconds for SMTP greeting
-      socketTimeout: 10000,     // 10 seconds for socket operations
+      auth: { user, pass: pass.replace(/\s+/g, "") },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
     });
   }
   return null;
@@ -205,7 +215,6 @@ const sendInvitationEmail = async ({
 };
 
 const sendVerificationEmail = async ({ email, code }) => {
-  const transporter = createGmailTransporter();
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -230,10 +239,36 @@ const sendVerificationEmail = async ({ email, code }) => {
     </html>
   `;
 
-  // 1. Try Gmail SMTP if configured
+  // 1. Try Brevo HTTP API (HTTPS — works on all hosting providers)
+  if (process.env.BREVO_API_KEY) {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": process.env.BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: "Sandbox", email: process.env.BREVO_SMTP_USER || "no-reply@sandbox.app" },
+        to: [{ email }],
+        subject: `${code} is your Sandbox verification code`,
+        htmlContent,
+      }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Brevo API error: ${response.status} — ${errBody}`);
+    }
+    return await response.json();
+  }
+
+  // 2. Try SMTP transporter (Brevo SMTP relay or Gmail)
+  const transporter = createGmailTransporter();
   if (transporter) {
+    const fromEmail = process.env.BREVO_SMTP_USER || process.env.GMAIL_USER;
     const info = await transporter.sendMail({
-      from: `"Sandbox" <${process.env.GMAIL_USER}>`,
+      from: `"Sandbox" <${fromEmail}>`,
       to: email,
       subject: `${code} is your Sandbox verification code`,
       html: htmlContent,
@@ -241,7 +276,7 @@ const sendVerificationEmail = async ({ email, code }) => {
     return info;
   }
 
-  // 2. Fallback to Resend
+  // 3. Fallback to Resend
   if (process.env.RESEND_API_KEY) {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const { data, error } = await resend.emails.send({
@@ -258,7 +293,7 @@ const sendVerificationEmail = async ({ email, code }) => {
     return data;
   }
 
-  throw new Error("No email service configured. Please set GMAIL_USER & GMAIL_APP_PASS or RESEND_API_KEY.");
+  throw new Error("No email service configured. Please set BREVO_API_KEY, GMAIL_USER & GMAIL_APP_PASS, or RESEND_API_KEY.");
 };
 
 module.exports = {
