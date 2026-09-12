@@ -662,15 +662,7 @@ if (assessmentAlreadyActive && !challenge) {
             {isRunning ? "Running..." : "▶ Run"}
           </button>
 
-          {proctoringActive && assessmentSession && (
-            <button
-              className="run-button"
-              onClick={handleSubmitAssessment}
-              disabled={isRunning || isNavigating}
-            >
-              ✓ Submit
-            </button>
-          )}
+         
         </div>
       </header>
 

@@ -165,6 +165,7 @@ async function runChallenge(req, res) {
         ],
         {
           new: true,
+          updatePipeline: true,
         }
       );
 
