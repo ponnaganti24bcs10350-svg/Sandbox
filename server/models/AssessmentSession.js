@@ -63,8 +63,18 @@ const assessmentSessionSchema = new mongoose.Schema(
       },
     ],
   },
-  {
+   {
     timestamps: true,
+  }
+);
+
+assessmentSessionSchema.index(
+  { candidate: 1, status: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: "active",
+    },
   }
 );
 

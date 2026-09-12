@@ -1,6 +1,12 @@
 const nodemailer = require("nodemailer");
 const { Resend } = require("resend");
-
+const escapeHtml = (value = "") =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 // Create Nodemailer transporter using Brevo SMTP relay
 const createGmailTransporter = () => {
   const user = process.env.BREVO_SMTP_USER || process.env.GMAIL_USER;
@@ -38,6 +44,9 @@ const sendInvitationEmail = async ({
   challengeTitle,
 }) => {
   const transporter = createGmailTransporter();
+  const safeCandidateName = escapeHtml(candidateName);
+const safeCompanyName = escapeHtml(companyName);
+const safeChallengeTitle = escapeHtml(challengeTitle);
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -81,7 +90,7 @@ const sendInvitationEmail = async ({
               line-height: 1.6;
             "
           >
-            Hi ${candidateName},
+            Hi ${safeCandidateName},
           </p>
 
           <p
@@ -91,7 +100,7 @@ const sendInvitationEmail = async ({
               line-height: 1.6;
             "
           >
-            <strong>${companyName}</strong> has invited you
+            <strong>${safeCompanyName}</strong> has invited you
             on Sandbox.
           </p>
 
@@ -124,7 +133,7 @@ const sendInvitationEmail = async ({
                       font-weight: bold;
                     "
                   >
-                    ${challengeTitle}
+                    ${safeChallengeTitle}
                   </p>
                 </div>
               `
@@ -186,9 +195,9 @@ const sendInvitationEmail = async ({
   // 1. Try Gmail SMTP if configured
   if (transporter) {
     const info = await transporter.sendMail({
-      from: `"Sandbox" <${process.env.GMAIL_USER}>`,
+     from: `"Sandbox" <${process.env.BREVO_SMTP_USER || process.env.GMAIL_USER}>`,
       to: candidateEmail,
-      subject: `${companyName} invited you on Sandbox`,
+      subject: `${safeCompanyName} invited you on Sandbox`,
       html: htmlContent,
     });
     return info;
@@ -200,7 +209,7 @@ const sendInvitationEmail = async ({
     const { data, error } = await resend.emails.send({
       from: process.env.EMAIL_FROM || "Sandbox <onboarding@resend.dev>",
       to: [candidateEmail],
-      subject: `${companyName} invited you on Sandbox`,
+      subject: `${safeCompanyName} invited you on Sandbox`,
       html: htmlContent,
     });
 

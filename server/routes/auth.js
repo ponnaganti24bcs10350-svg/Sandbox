@@ -1,4 +1,5 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
@@ -8,6 +9,27 @@ const { sendVerificationEmail } = require("../services/emailService");
 const { protect } = require("../middleware/auth");
 
 const router = express.Router();
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many login attempts. Please try again later.",
+  },
+});
+
+const verificationLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many verification requests. Please try again later.",
+  },
+});
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const signToken = (id) =>
@@ -28,7 +50,7 @@ const userResponse = (user) => ({
 
 // @route  POST /api/auth/send-verification
 // @body   { email }
-router.post("/send-verification", async (req, res) => {
+router.post("/send-verification", verificationLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
@@ -43,9 +65,7 @@ router.post("/send-verification", async (req, res) => {
       return res.status(409).json({ success: false, message: "An account with this email already exists" });
     }
 
-    // Generate 6 digit OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-
+   const code = crypto.randomInt(100000, 1000000).toString();
     // Remove older codes for this email
     await VerificationCode.deleteMany({ email: normalizedEmail });
 
@@ -76,7 +96,7 @@ router.post("/send-verification", async (req, res) => {
 
 // @route  POST /api/auth/verify-code
 // @body   { email, code, name, password, role }
-router.post("/verify-code", async (req, res) => {
+router.post("/verify-code", verificationLimiter, async (req, res) => {
   try {
     const { email, code, name, password, role } = req.body;
     if (!email || !code) {
@@ -159,7 +179,7 @@ router.post("/signup", async (req, res) => {
 
 // @route  POST /api/auth/login
 // @body   { email, password }
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -191,6 +211,12 @@ router.post("/login", async (req, res) => {
 router.post("/google", async (req, res) => {
   try {
     const { credential, email: bodyEmail, name: bodyName, picture: bodyPicture, googleId: bodyGoogleId } = req.body;
+    if (!credential) {
+  return res.status(400).json({
+    success: false,
+    message: "Google credential is required",
+  });
+}
     let email = bodyEmail;
     let name = bodyName;
     let picture = bodyPicture;
@@ -202,20 +228,25 @@ router.post("/google", async (req, res) => {
           idToken: credential,
           audience: process.env.GOOGLE_CLIENT_ID,
         });
-        const payload = ticket.getPayload();
-        email = payload.email;
-        name = payload.name;
-        picture = payload.picture;
-        googleId = payload.sub;
+       const payload = ticket.getPayload();
+
+if (!payload.email_verified) {
+  return res.status(401).json({
+    success: false,
+    message: "Google email is not verified",
+  });
+}
+
+email = payload.email;
+name = payload.name;
+picture = payload.picture;
+googleId = payload.sub;
       } catch (verifyErr) {
-        const decoded = jwt.decode(credential);
-        if (decoded && decoded.email) {
-          email = decoded.email;
-          name = decoded.name || name;
-          picture = decoded.picture || picture;
-          googleId = decoded.sub || googleId;
-        }
-      }
+  return res.status(401).json({
+    success: false,
+    message: "Invalid Google credential",
+  });
+}
     }
 
     if (!email) {

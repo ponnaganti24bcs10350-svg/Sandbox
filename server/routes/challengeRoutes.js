@@ -10,7 +10,7 @@ const { protect } = require("../middleware/auth");
 
 const router = express.Router();
 
-router.get("/random", (req, res) => {
+router.get("/random", protect ,(req, res) => {
   const randomIndex = Math.floor(
     Math.random() * challenges.length
   );

@@ -1,10 +1,6 @@
 const challenges = require("../challenges/challenges");
 const User = require("../models/User");
 
-// ------------------------------------
-// GET RANDOM UNSOLVED CHALLENGE
-// ------------------------------------
-
 function getRandomUnsolvedChallenge(solvedIds) {
   const availableChallenges = challenges.filter(
     (challenge) =>
@@ -22,9 +18,6 @@ function getRandomUnsolvedChallenge(solvedIds) {
   return availableChallenges[randomIndex];
 }
 
-// ------------------------------------
-// GET CURRENT CHALLENGE
-// ------------------------------------
 
 async function getCurrentChallenge(req, res) {
   try {

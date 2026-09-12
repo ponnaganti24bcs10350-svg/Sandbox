@@ -161,6 +161,13 @@ const startAssessment = async (req, res) => {
       "Start assessment error:",
       error
     );
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "You already have an active assessment session",
+      });
+    }
+
 
     return res.status(500).json({
       success: false,
