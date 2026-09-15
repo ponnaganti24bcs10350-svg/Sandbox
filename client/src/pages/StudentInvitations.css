@@ -1,0 +1,309 @@
+.student-invitations-page {
+  min-height: calc(100vh - 60px);
+  background: #1e1e1e;
+  color: #ffffff;
+  padding: 40px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  overflow-y: auto;
+}
+
+.invitations-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.invitations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  border-bottom: 1px solid #3c3c3c;
+  padding-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.invitations-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.invitations-subtitle {
+  color: #aaaaaa;
+  font-size: 15px;
+  margin: 0;
+}
+
+.back-btn {
+  background: #2d2d2d;
+  color: #ffffff;
+  border: 1px solid #444444;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.back-btn:hover {
+  background: #3a3a3a;
+  border-color: #555555;
+}
+
+/* LOADING & ERROR */
+.invitations-loading,
+.invitations-error,
+.empty-invitations {
+  text-align: center;
+  padding: 60px 20px;
+  background: #252526;
+  border-radius: 12px;
+  border: 1px solid #3c3c3c;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #333333;
+  border-top-color: #007acc;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-invitations h3 {
+  font-size: 20px;
+  margin: 0 0 10px;
+  color: #ffffff;
+}
+
+.empty-invitations p {
+  color: #aaaaaa;
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+/* HORIZONTAL TAB ROWS LIST */
+.invitations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.invitation-row {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.invitation-row:hover {
+  border-color: #555555;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+/* LEFT SECTION */
+.invitation-row-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 220px;
+}
+
+.company-avatar {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  border: 1px solid #4b5563;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.company-details h2 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 3px 0;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.company-email {
+  font-size: 12px;
+  color: #94a3b8;
+  display: block;
+}
+
+/* CENTER SECTION */
+.invitation-row-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.position-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.position-tag {
+  background: #334155;
+  color: #38bdf8;
+  border: 1px solid #475569;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.received-date {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.recruiter-message {
+  margin: 2px 0 0 0;
+  font-size: 13px;
+  color: #cbd5e1;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 480px;
+}
+
+/* RIGHT SECTION */
+.invitation-row-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.status-badge {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-badge.pending {
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.status-badge.accepted {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-badge.declined {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accept-btn {
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.accept-btn:hover:not(:disabled) {
+  background: #059669;
+}
+
+.decline-btn {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.decline-btn:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.accept-btn:disabled,
+.decline-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.responded-text {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .invitation-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .invitation-row-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .recruiter-message {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
