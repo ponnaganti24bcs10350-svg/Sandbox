@@ -138,6 +138,8 @@ async function runChallenge(req, res) {
 
               lastSolvedDate: today,
 
+              lastChallengeSolvedAt: new Date(),
+
               totalSolved: {
                 $add: ["$totalSolved", 1],
               },

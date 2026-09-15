@@ -69,7 +69,7 @@ const assessmentSessionSchema = new mongoose.Schema(
 );
 
 assessmentSessionSchema.index(
-  { candidate: 1, status: 1 },
+  { candidate: 1, challenge: 1, status: 1 },
   {
     unique: true,
     partialFilterExpression: {

@@ -192,6 +192,8 @@ const recordIntegrityEvent = async (req, res) => {
       "right_click",
       "shortcut",
       "multiple_session",
+      "screen_share_stopped",
+      "webcam_stopped",
     ];
 
     if (!allowedEvents.includes(type)) {
@@ -224,6 +226,8 @@ const recordIntegrityEvent = async (req, res) => {
       right_click: 2,
       shortcut: 3,
       multiple_session: 15,
+      screen_share_stopped: 10,
+      webcam_stopped: 10,
     };
 
     const penalty = penalties[type] || 0;
@@ -240,9 +244,18 @@ const recordIntegrityEvent = async (req, res) => {
 
     await session.save();
 
+    let barredUntil = null;
+    if (session.integrityScore <= 70) {
+      // 24 hours from now
+      barredUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      req.user.barredUntil = barredUntil;
+      await req.user.save();
+    }
+
     return res.json({
       success: true,
       integrityScore: session.integrityScore,
+      barredUntil,
     });
   } catch (error) {
     console.error("Record integrity event error:", error);
@@ -299,10 +312,18 @@ const submitAssessment = async (req, res) => {
 
 const getActiveAssessment = async (req, res) => {
   try {
-    const session = await AssessmentSession.findOne({
+    const { challengeId } = req.query;
+    
+    let query = {
       candidate: req.user._id,
       status: "active",
-    }).sort({ createdAt: -1 });
+    };
+    
+    if (challengeId) {
+      query.challenge = challengeId;
+    }
+
+    const session = await AssessmentSession.findOne(query).sort({ createdAt: -1 });
 
     if (!session) {
       return res.json({
