@@ -217,8 +217,8 @@ const recordIntegrityEvent = async (req, res) => {
     }
 
     const penalties = {
-      tab_switch: 5,
-      window_blur: 2,
+      tab_switch: 3,
+      window_blur: 0,
       fullscreen_exit: 5,
       copy: 5,
       paste: 5,
@@ -246,8 +246,8 @@ const recordIntegrityEvent = async (req, res) => {
 
     let barredUntil = null;
     if (session.integrityScore <= 70) {
-      // 24 hours from now
-      barredUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      // 3 hours from now
+      barredUntil = new Date(Date.now() + 3 * 60 * 60 * 1000);
       req.user.barredUntil = barredUntil;
       await req.user.save();
     }

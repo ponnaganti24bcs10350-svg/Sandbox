@@ -171,12 +171,13 @@ useEffect(() => {
     }
   };
 
-  async function startAssessmentSession() {
+  async function startAssessmentSession(targetId = null) {
     const token = localStorage.getItem("token");
     if (!token) throw new Error("You are not logged in");
 
     const body = {};
-    if (challengeId) body.challengeId = challengeId;
+    const idToStart = targetId && typeof targetId === "string" ? targetId : challengeId;
+    if (idToStart) body.challengeId = idToStart;
 
     const response = await fetch(`${API_URL}/api/assessment/start`, {
       method: "POST",
@@ -260,6 +261,7 @@ useEffect(() => {
   }
 
   async function requestScreenShare() {
+    if (isScreenShared && screenStream) return true;
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { displaySurface: "monitor" },
@@ -299,6 +301,7 @@ useEffect(() => {
   }
 
   async function requestWebcam() {
+    if (isWebcamShared && webcamStream) return true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -327,7 +330,7 @@ useEffect(() => {
     }
   }
 
-  async function handleStartProctoring() {
+  async function handleStartProctoring(targetId = null) {
     try {
       setResult(null);
 
@@ -349,7 +352,7 @@ useEffect(() => {
         return;
       }
 
-      const session = await startAssessmentSession();
+      const session = await startAssessmentSession(targetId);
       sessionStorage.setItem("assessmentStarted", "true");
       setProctoringActive(true);
 
@@ -487,12 +490,17 @@ useEffect(() => {
       setSelectedFile(firstFile || "");
       setResult(null);
       
+      const wasProctoring = proctoringActive;
       const hasActive = await checkActiveAssessment(nextChallenge.challengeId);
       if (hasActive) {
         setProctoringActive(true);
       } else {
-        setProctoringActive(false);
-        setIsSwapped(false);
+        if (wasProctoring) {
+          handleStartProctoring(nextChallenge.challengeId);
+        } else {
+          setProctoringActive(false);
+          setIsSwapped(false);
+        }
       }
     } catch (error) {
       console.error(`Failed to load ${direction} challenge:`, error);

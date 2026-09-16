@@ -10,7 +10,7 @@ import CompanySignup from "./pages/CompanySignup";
 import Profile from "./pages/Profile";
 import StudentInvitations from "./pages/StudentInvitations";
 import EmailVerification from "./pages/EmailVerification";
-
+import Instructions from "./pages/Instructions";
 
 function App() {
   const [verificationData, setVerificationData] = useState(null);
@@ -32,7 +32,7 @@ function App() {
       }
     }
 
-    return "challenge";
+    return "instructions";
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -98,13 +98,13 @@ function App() {
       if (loggedInUser.role === "company") {
         setPage("company");
       } else {
-        setPage("challenge");
+        setPage("instructions");
       }
 
       return;
     }
 
-    setPage("challenge");
+    setPage("instructions");
   }
 
   /* PRACTICE AGAIN */
@@ -190,6 +190,12 @@ function App() {
         />
       )}
 
+      {/* ================= INSTRUCTIONS ================= */}
+
+      {page === "instructions" && (
+        <Instructions onProceed={() => setPage("challenge")} />
+      )}
+
       {/* ================= COMPANY DASHBOARD ================= */}
 
       {page === "company" && (
@@ -217,6 +223,7 @@ function App() {
         page !== "email-verification" &&
         page !== "company-signup" &&
         page !== "company" &&
+        page !== "instructions" &&
         page !== "profile" && (
           <>
             {/* ================= HEADER ================= */}
