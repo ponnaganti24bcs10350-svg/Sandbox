@@ -59,9 +59,9 @@ async function runChallenge(req, res) {
     if (challengeId === "1") {
       result = await testChallenge1(files);
     } else if (challengeId === "2") {
-      result = testChallenge2(files);
+      result = await testChallenge2(files);
     } else if (challengeId === "3") {
-      result = testChallenge3(files);
+      result = await testChallenge3(files);
     } else {
       return res.json({
         passed: false,

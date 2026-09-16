@@ -7,7 +7,7 @@ import { getApiUrl } from "../config/api";
 
 const API_URL = getApiUrl();
 
-function ChallengeWorkspace({ selectedChallenge }) {
+function ChallengeWorkspace({ selectedChallenge,setSelectedChallenge }) {
   const challengeId = selectedChallenge?.challengeId || null;
 
   const [challenge, setChallenge] = useState(null);
@@ -33,6 +33,52 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
     setIsNavigating(false);
     setIsSwapped(false);
   }, [challengeId]);
+  useEffect(() => {
+  async function loadSelectedChallenge() {
+    if (!challengeId) return;
+
+    const token = localStorage.getItem("token");
+
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/progress/current?challengeId=${encodeURIComponent(
+          challengeId
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success || !data.data) {
+        throw new Error(
+          data.message || "Failed to load selected challenge"
+        );
+      }
+
+      setChallenge(data.data);
+
+      // Keep the selected challenge synchronized.
+      if (setSelectedChallenge) {
+        setSelectedChallenge({
+          challengeId: data.data.challengeId,
+        });
+      }
+    } catch (error) {
+      console.error(
+        "Failed to load selected challenge:",
+        error
+      );
+    }
+  }
+
+  loadSelectedChallenge();
+}, [challengeId, setSelectedChallenge]);
 const checkActiveAssessment = async () => {
   try {
     const token = localStorage.getItem("token");
