@@ -1,52 +1,43 @@
 const User = require("../models/User");
+const challenges = require("../challenges/challenges");
 
 // GET LEADERBOARD
 // Only student accounts appear on the developer leaderboard.
 async function getLeaderboard(req, res) {
   try {
+    const totalChallenges = challenges.length;
+
     const users = await User.find({
       role: "student",
     })
       .select(
-        "name javascriptScore reactScore totalSolved"
+        "name totalSolved lastChallengeSolvedAt"
       )
       .lean();
 
     const sortedUsers = users.sort((a, b) => {
-      const aOverall =
-        (a.javascriptScore + a.reactScore) / 2;
-
-      const bOverall =
-        (b.javascriptScore + b.reactScore) / 2;
-
-      return bOverall - aOverall;
+      if (b.totalSolved !== a.totalSolved) {
+        return b.totalSolved - a.totalSolved;
+      }
+      
+      const aTime = a.lastChallengeSolvedAt ? new Date(a.lastChallengeSolvedAt).getTime() : Infinity;
+      const bTime = b.lastChallengeSolvedAt ? new Date(b.lastChallengeSolvedAt).getTime() : Infinity;
+      
+      return aTime - bTime;
     });
 
     const rankedUsers = sortedUsers.map(
       (user, index) => {
-        const overallScore = Math.round(
-          (user.javascriptScore +
-            user.reactScore) /
-            2
-        );
+        const mernScore = totalChallenges > 0 
+          ? Math.min(Math.round((user.totalSolved / totalChallenges) * 100), 100)
+          : 0;
 
         return {
           rank: index + 1,
-
           userId: user._id.toString(),
-
           username: user.name,
-
-          javascriptScore:
-            user.javascriptScore,
-
-          reactScore:
-            user.reactScore,
-
-          totalSolved:
-            user.totalSolved,
-
-          overallScore,
+          mernScore,
+          totalSolved: user.totalSolved,
         };
       }
     );
