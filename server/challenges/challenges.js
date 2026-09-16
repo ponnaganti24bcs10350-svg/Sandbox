@@ -466,7 +466,238 @@ Your task is to investigate the system, identify the root causes, implement reli
     ],
 
     files: {
-      // Candidate-visible repository goes here.
+      "server/middleware/auth.js": `
+const jwt = require("jsonwebtoken");
+
+module.exports = function protect(req, res, next) {
+  const header = req.headers.authorization;
+
+  if (!header) {
+    return res.status(401).json({
+      message: "Authentication required",
+    });
+  }
+
+  try {
+    const token = header.replace("Bearer ", "");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
+    };
+
+    return next();
+  } catch (error) {
+    return res.status(500).json({
+      message: "Authentication failed",
+    });
+  }
+};
+`,
+      "server/controllers/authController.js": `
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+async function login(req, res) {
+  const user = await User.findOne({ email: req.body.email });
+
+  if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  return res.json({
+    token: jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET
+    ),
+    user: {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    },
+  });
+}
+
+module.exports = { login };
+`,
+      "server/controllers/postController.js": `
+const Post = require("../models/Post");
+
+async function getPost(req, res) {
+  const post = await Post.findById(req.params.id).lean();
+
+  if (!post) {
+    return res.status(200).json({ data: null });
+  }
+
+  return res.json({ data: post });
+}
+
+async function getPosts(req, res) {
+  const posts = await Post.find({})
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return res.json({ data: posts });
+}
+
+async function updatePost(req, res) {
+  const post = await Post.findByIdAndUpdate(
+    req.params.id,
+    { $set: { body: req.body.body } },
+    { new: true }
+  ).lean();
+
+  if (!post) {
+    return res.status(404).json({ message: "Post not found" });
+  }
+
+  return res.json({ data: post });
+}
+
+async function deletePost(req, res) {
+  const post = await Post.findByIdAndDelete(req.params.id);
+
+  if (!post) {
+    return res.status(404).json({ message: "Post not found" });
+  }
+
+  return res.json({ success: true });
+}
+
+module.exports = {
+  getPost,
+  getPosts,
+  updatePost,
+  deletePost,
+};
+`,
+      "server/routes/postRoutes.js": `
+const express = require("express");
+const auth = require("../middleware/auth");
+const {
+  getPost,
+  getPosts,
+  updatePost,
+  deletePost,
+} = require("../controllers/postController");
+
+const router = express.Router();
+
+router.use(auth);
+router.get("/", getPosts);
+router.get("/:id", getPost);
+router.patch("/:id", updatePost);
+router.delete("/:id", deletePost);
+
+module.exports = router;
+`,
+      "server/models/User.js": `
+const mongoose = require("mongoose");
+
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true, select: false },
+  role: { type: String, enum: ["student", "company", "admin"] },
+});
+
+module.exports = mongoose.model("Challenge3User", userSchema);
+`,
+      "server/models/Post.js": `
+const mongoose = require("mongoose");
+
+const postSchema = new mongoose.Schema(
+  {
+    body: { type: String, required: true },
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Challenge3User",
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Challenge3Post", postSchema);
+`,
+      "server/data/production.json": `
+{
+  "users": [
+    {
+      "_id": "64a300000000000000000001",
+      "email": "aarav@example.com",
+      "password": "$2b$10$example-hash-aarav",
+      "role": "student"
+    },
+    {
+      "_id": "64a300000000000000000002",
+      "email": "meera@example.com",
+      "password": "$2b$10$example-hash-meera",
+      "role": "student"
+    }
+  ],
+  "posts": [
+    {
+      "_id": "64a400000000000000000001",
+      "body": "Aarav's post",
+      "author": "64a300000000000000000001"
+    },
+    {
+      "_id": "64a400000000000000000002",
+      "body": "Meera's post",
+      "author": "64a300000000000000000002"
+    }
+  ]
+}
+`,
+      "server/docs/API.md": `
+# CampusConnect API
+
+All post routes require a Bearer token.
+
+## POST /api/auth/login
+
+Returns a token for valid credentials.
+
+## GET /api/posts/:id
+
+Returns one post or a not-found response.
+
+## PATCH /api/posts/:id
+
+Updates a post when the authenticated user is allowed to edit it.
+
+## DELETE /api/posts/:id
+
+Deletes a post when the authenticated user is allowed to delete it.
+`,
+      "server/logs/production.log": `
+2026-08-20T08:10:01Z INFO deployment version=2026.08.20
+2026-08-20T08:12:04Z WARN login email=aarav@example.com status=500
+2026-08-20T08:13:11Z WARN post request actor=64a300000000000000000001 target=64a400000000000000000002 status=200
+2026-08-20T08:14:22Z ERROR GET /api/posts/64a400000000000000000099 status=500
+`,
+      "tests/existing.test.js": `
+describe("CampusConnect production API", () => {
+  test("valid users can log in", async () => {
+    // Existing authentication behaviour must remain available.
+  });
+
+  test("users can read their own post", async () => {
+    // Existing post behaviour must remain available.
+  });
+
+  test("missing posts return the documented response", async () => {
+    // Existing not-found behaviour must remain available.
+  });
+
+  test("post responses preserve the documented shape", async () => {
+    // Existing API response behaviour must remain available.
+  });
+});
+`,
     },
   },
 ];
