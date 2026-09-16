@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 // Or if using Vite src imports: import badgeBg from "../assets/pexels-alipazani-2810836.jpg";
 import FileExplorer from "../components/FileExplorer";
 import CodeEditor from "../components/CodeEditor";
@@ -23,17 +23,10 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [screenStream, setScreenStream] = useState(null);
   const [isScreenShared, setIsScreenShared] = useState(false);
+  const screenSharedRef = useRef(false); // sync ref for render-cycle safe checks
   const [webcamStream, setWebcamStream] = useState(null);
   const [isWebcamShared, setIsWebcamShared] = useState(false);
   const [showTabSwitchWarning, setShowTabSwitchWarning] = useState(false);
-  const [barredUntil, setBarredUntil] = useState(() => {
-    try {
-      const u = JSON.parse(localStorage.getItem("user"));
-      return u?.barredUntil || null;
-    } catch { return null; }
-  });
-
-  // State to handle physical card swapping animation
   const [isSwapped, setIsSwapped] = useState(false);
 
   useEffect(() => {
@@ -158,13 +151,8 @@ useEffect(() => {
       if (typeof data.integrityScore === "number") {
         setIntegrityScore(data.integrityScore);
       }
-      if (data.barredUntil) {
-        setBarredUntil(data.barredUntil);
-        try {
-          const u = JSON.parse(localStorage.getItem("user") || "{}");
-          u.barredUntil = data.barredUntil;
-          localStorage.setItem("user", JSON.stringify(u));
-        } catch(e) {}
+      if (data.lockedUntil) {
+        setAssessmentSession(prev => prev ? { ...prev, lockedUntil: data.lockedUntil } : prev);
       }
     } catch (error) {
       console.error("Integrity event error:", error);
@@ -282,17 +270,20 @@ useEffect(() => {
       
       videoTrack.onended = () => {
         setIsScreenShared(false);
+        screenSharedRef.current = false;
         setScreenStream(null);
         reportIntegrityEvent("screen_share_stopped", { reason: "user_stopped" });
       };
 
       videoTrack.onmute = () => {
         setIsScreenShared(false);
+        screenSharedRef.current = false;
         reportIntegrityEvent("screen_share_stopped", { reason: "hardware_mute" });
       };
 
       setScreenStream(stream);
       setIsScreenShared(true);
+      screenSharedRef.current = true;
       return true;
     } catch (error) {
       console.error("Screen sharing failed:", error);
@@ -654,19 +645,6 @@ sessionStorage.removeItem("assessmentStarted");
     document.addEventListener("mousemove", resize);
     document.addEventListener("mouseup", stopResize);
   }
-  if (barredUntil && new Date(barredUntil) > new Date()) {
-    return (
-      <div style={{ padding: "4rem", textAlign: "center", color: "white", backgroundColor: "#0f172a", minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-        <h1 style={{ color: "#ff4d4d", fontSize: "3rem", marginBottom: "1rem" }}>Access Blocked</h1>
-        <p style={{ fontSize: "1.2rem", maxWidth: "600px", lineHeight: "1.6" }}>
-          You have been barred from taking assessments for 24 hours due to multiple prohibited actions or cheating attempts.
-        </p>
-        <p style={{ marginTop: "2rem", color: "#94a3b8" }}>
-          Ban expires: {new Date(barredUntil).toLocaleString()}
-        </p>
-      </div>
-    );
-  }
 
   if (checkingAssessment) {
   return (
@@ -741,7 +719,7 @@ if (assessmentAlreadyActive && !challenge) {
   );
 }
 
-if (proctoringActive && !isScreenShared) {
+if (proctoringActive && !isScreenShared && !screenSharedRef.current) {
   return (
     <div className="badge-screen-container">
       <div className="assessment-active-card" style={{ borderColor: "#ef4444" }}>
@@ -916,10 +894,13 @@ if (proctoringActive && showTabSwitchWarning) {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "6px",
-                fontSize: "13px",
-                fontWeight: 600,
-                whiteSpace: "nowrap",
+                backgroundColor: integrityScore > 85 ? "rgba(16, 185, 129, 0.1)" : integrityScore > 75 ? "rgba(245, 158, 11, 0.1)" : "rgba(239, 68, 68, 0.1)",
+                color: integrityScore > 85 ? "#10b981" : integrityScore > 75 ? "#f59e0b" : "#ef4444",
+                padding: "6px 12px",
+                borderRadius: "20px",
+                fontWeight: "600",
+                fontSize: "14px",
+                border: `1px solid ${integrityScore > 85 ? "rgba(16, 185, 129, 0.2)" : integrityScore > 75 ? "rgba(245, 158, 11, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
               }}
             >
               Integrity: {integrityScore}/100
@@ -942,49 +923,63 @@ if (proctoringActive && showTabSwitchWarning) {
           >
             ↺ Reset
           </button>
-         
+
         </div>
       </header>
 
-      <div className="workspace-content">
-        <div className="sidebar">
-          <FileExplorer
-            key={challenge.challengeId}
-            files={challenge.files}
-            selectedFile={selectedFile}
-            onSelectFile={setSelectedFile}
-          />
+      {isLockedOut ? (
+        <div style={{ padding: "4rem", textAlign: "center", color: "white", backgroundColor: "#0f172a", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+          <h1 style={{ color: "#ff4d4d", fontSize: "3rem", marginBottom: "1rem" }}>Question Locked</h1>
+          <p style={{ fontSize: "1.2rem", maxWidth: "600px", lineHeight: "1.6" }}>
+            You have been locked out of this specific question for 1 hour due to multiple prohibited actions. You may navigate to other questions using the top bar.
+          </p>
+          <p style={{ marginTop: "2rem", color: "#94a3b8" }}>
+            Lock expires: {new Date(assessmentSession.lockedUntil).toLocaleString()}
+          </p>
         </div>
+      ) : (
+        <div className="workspace-main">
+          <div className="workspace-content">
+            <div className="sidebar">
+              <FileExplorer
+                key={challenge.challengeId}
+                files={challenge.files}
+                selectedFile={selectedFile}
+                onSelectFile={setSelectedFile}
+              />
+            </div>
 
-        <div className="challenge-panel">
-          <h2>{challenge.title}</h2>
-          <h3>Problem</h3>
-          <p>{challenge.description}</p>
-          <h3>Requirements</h3>
-          <ul>
-            {challenge.requirements.map((requirement, index) => (
-              <li key={index}>{requirement}</li>
-            ))}
-          </ul>
-        </div>
+            <div className="challenge-panel">
+              <h2>{challenge.title}</h2>
+              <h3>Problem</h3>
+              <p>{challenge.description}</p>
+              <h3>Requirements</h3>
+              <ul>
+                {challenge.requirements.map((requirement, index) => (
+                  <li key={index}>{requirement}</li>
+                ))}
+              </ul>
+            </div>
 
-        <div className="editor-area">
-          <h3>{selectedFile}</h3>
-          <div className="editor-container">
-            <CodeEditor
-              code={challenge.files[selectedFile] || ""}
-              onChange={handleCodeChange}
-              language={getLanguage(selectedFile)}
-            />
+            <div className="editor-area">
+              <h3>{selectedFile}</h3>
+              <div className="editor-container">
+                <CodeEditor
+                  code={challenge.files[selectedFile] || ""}
+                  onChange={handleCodeChange}
+                  language={getLanguage(selectedFile)}
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="resize-handle" onMouseDown={startResize} />
+          <div className="resize-handle" onMouseDown={startResize} />
 
-      <div className="terminal-panel" style={{ height: `${terminalHeight}px` }}>
-        <TestResults result={result} isRunning={isRunning} />
-      </div>
+          <div className="terminal-panel" style={{ height: `${terminalHeight}px` }}>
+            <TestResults result={result} isRunning={isRunning} />
+          </div>
+          </div>   {/* workspace-main */}
+      )}
     </div>
   );
 }

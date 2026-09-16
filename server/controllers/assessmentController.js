@@ -242,20 +242,18 @@ const recordIntegrityEvent = async (req, res) => {
       metadata: metadata || {},
     });
 
-    await session.save();
-
-    let barredUntil = null;
+    let lockedUntil = null;
     if (session.integrityScore <= 70) {
-      // 3 hours from now
-      barredUntil = new Date(Date.now() + 3 * 60 * 60 * 1000);
-      req.user.barredUntil = barredUntil;
-      await req.user.save();
+      // 1 hour from now for this specific question
+      lockedUntil = new Date(Date.now() + 1 * 60 * 60 * 1000);
+      session.lockedUntil = lockedUntil;
+      await session.save();
     }
 
     return res.json({
       success: true,
       integrityScore: session.integrityScore,
-      barredUntil,
+      lockedUntil,
     });
   } catch (error) {
     console.error("Record integrity event error:", error);
@@ -341,6 +339,7 @@ const getActiveAssessment = async (req, res) => {
         startedAt: session.startedAt,
         integrityScore: session.integrityScore,
         status: session.status,
+        lockedUntil: session.lockedUntil,
       },
     });
   } catch (error) {

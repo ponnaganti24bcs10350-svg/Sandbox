@@ -41,6 +41,12 @@ app.use(express.json({ limit: "1mb" }));
 // Prevent HTTP Parameter Pollution attacks
 app.use(hpp());
 
+// Sanitize MongoDB operator injection from req.body, req.params, req.query
+app.use(mongoSanitize());
+
+// Set secure HTTP headers
+app.use(helmet());
+
 // Health check
 app.get("/", (req, res) => {
   res.json({

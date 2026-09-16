@@ -83,8 +83,8 @@ export default function Instructions({ onProceed }) {
           </div>
           <ul className="hr-list">
             <li>All code submissions will be checked for plagiarism after you're finished.</li>
-            <li>If your integrity score drops to <strong>70 or below</strong>, the assessment will instantly terminate.</li>
-            <li>Hitting the penalty threshold results in being <strong>permanently barred from taking any assessments for 24 hours</strong>.</li>
+            <li>If your integrity score drops to <strong>70 or below</strong> on a question, the assessment for that question will instantly terminate.</li>
+            <li>Hitting the penalty threshold results in being <strong>permanently locked out of that specific question for 1 hour</strong>. You may still complete other questions.</li>
           </ul>
         </div>
 

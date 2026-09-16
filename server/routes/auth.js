@@ -17,8 +17,6 @@ if (!getApps().length) {
   }
 }
 
-// ... (skip down to the /google route in the next replacement block)
-
 const User = require("../models/User");
 const VerificationCode = require("../models/VerificationCode");
 const { sendVerificationEmail } = require("../services/emailService");
