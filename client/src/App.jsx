@@ -10,7 +10,7 @@ import CompanySignup from "./pages/CompanySignup";
 import Profile from "./pages/Profile";
 import StudentInvitations from "./pages/StudentInvitations";
 import EmailVerification from "./pages/EmailVerification";
-
+import Instructions from "./pages/Instructions";
 
 function App() {
   
@@ -33,7 +33,7 @@ function App() {
       }
     }
 
-    return "challenge";
+    return "instructions";
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -127,6 +127,11 @@ function handleLogin() {
     const loggedInUser =
       JSON.parse(savedUser);
 
+      if (loggedInUser.role === "company") {
+        setPage("company");
+      } else {
+        setPage("instructions");
+      }
     setUser(loggedInUser);
     setSelectedChallenge(null);
     setMenuOpen(false);
@@ -287,6 +292,12 @@ useEffect(() => {
         />
       )}
 
+      {/* ================= INSTRUCTIONS ================= */}
+
+      {page === "instructions" && (
+        <Instructions onProceed={() => setPage("challenge")} />
+      )}
+
       {/* ================= COMPANY DASHBOARD ================= */}
 
       {page === "company" && (
@@ -314,6 +325,7 @@ useEffect(() => {
         page !== "email-verification" &&
         page !== "company-signup" &&
         page !== "company" &&
+        page !== "instructions" &&
         page !== "profile" && (
           <>
             {/* ================= HEADER ================= */}

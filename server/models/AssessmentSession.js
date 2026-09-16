@@ -34,6 +34,11 @@ const assessmentSessionSchema = new mongoose.Schema(
       default: 100,
     },
 
+    lockedUntil: {
+      type: Date,
+      default: null,
+    },
+
     events: [
       {
         type: {
@@ -48,6 +53,8 @@ const assessmentSessionSchema = new mongoose.Schema(
             "shortcut",
             "window_blur",
             "multiple_session",
+            "screen_share_stopped",
+            "webcam_stopped",
           ],
         },
 
@@ -69,7 +76,7 @@ const assessmentSessionSchema = new mongoose.Schema(
 );
 
 assessmentSessionSchema.index(
-  { candidate: 1, status: 1 },
+  { candidate: 1, challenge: 1, status: 1 },
   {
     unique: true,
     partialFilterExpression: {

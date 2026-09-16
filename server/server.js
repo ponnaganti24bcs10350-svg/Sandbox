@@ -12,11 +12,40 @@ const leaderboardRoutes = require("./routes/leaderboardRoutes");
 const progressRoutes = require("./routes/progressRoutes");
 const invitationRoutes = require("./routes/invitationRoutes");
 
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const hpp = require("hpp");
+const rateLimit = require("express-rate-limit");
+
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json({limit:"1mb"}));
+
+// Global Rate Limiting: Max 1000 requests per 15 minutes per IP
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests from this IP, please try again after 15 minutes.",
+  },
+});
+app.use("/api", globalLimiter);
+
+// Limit payload size to 1MB to prevent payload exhaustion attacks
+app.use(express.json({ limit: "1mb" }));
+
+// Prevent HTTP Parameter Pollution attacks
+app.use(hpp());
+
+// Sanitize MongoDB operator injection from req.body, req.params, req.query
+app.use(mongoSanitize());
+
+// Set secure HTTP headers
+app.use(helmet());
 
 // Health check
 app.get("/", (req, res) => {

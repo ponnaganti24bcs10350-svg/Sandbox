@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/khushi-infinity/Sandbox#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
