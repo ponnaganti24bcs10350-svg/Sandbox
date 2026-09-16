@@ -232,31 +232,43 @@ const recordIntegrityEvent = async (req, res) => {
 
     const penalty = penalties[type] || 0;
 
+    // Reduce integrity score
     session.integrityScore = Math.max(
       0,
       session.integrityScore - penalty
     );
 
+    // Record the event
     session.events.push({
       type,
       metadata: metadata || {},
     });
 
+    // Lock if integrity reaches 70 or below
     let lockedUntil = null;
+
     if (session.integrityScore <= 70) {
-      // 1 hour from now for this specific question
-      lockedUntil = new Date(Date.now() + 1 * 60 * 60 * 1000);
+      lockedUntil = new Date(
+        Date.now() + 1 * 60 * 60 * 1000
+      );
+
       session.lockedUntil = lockedUntil;
-      await session.save();
     }
+
+    // IMPORTANT:
+    // Always save the updated score and event
+    await session.save();
 
     return res.json({
       success: true,
       integrityScore: session.integrityScore,
-      lockedUntil,
+      lockedUntil: session.lockedUntil || null,
     });
   } catch (error) {
-    console.error("Record integrity event error:", error);
+    console.error(
+      "Record integrity event error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -311,23 +323,36 @@ const submitAssessment = async (req, res) => {
 const getActiveAssessment = async (req, res) => {
   try {
     const { challengeId } = req.query;
-    
+
     let query = {
       candidate: req.user._id,
       status: "active",
     };
-    
+
     if (challengeId) {
       query.challenge = challengeId;
     }
 
-    const session = await AssessmentSession.findOne(query).sort({ createdAt: -1 });
+    const session = await AssessmentSession.findOne(query)
+      .sort({ createdAt: -1 });
 
     if (!session) {
       return res.json({
         success: true,
         active: false,
       });
+    }
+
+    // If the 1-hour lock has expired,
+    // reset the integrity score and unlock the challenge.
+    if (
+      session.lockedUntil &&
+      new Date(session.lockedUntil) <= new Date()
+    ) {
+      session.integrityScore = 100;
+      session.lockedUntil = null;
+
+      await session.save();
     }
 
     return res.json({
@@ -343,7 +368,10 @@ const getActiveAssessment = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get active assessment error:", error);
+    console.error(
+      "Get active assessment error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,

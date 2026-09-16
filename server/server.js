@@ -13,7 +13,7 @@ const progressRoutes = require("./routes/progressRoutes");
 const invitationRoutes = require("./routes/invitationRoutes");
 
 const helmet = require("helmet");
-const mongoSanitize = require("express-mongo-sanitize");
+
 const hpp = require("hpp");
 const rateLimit = require("express-rate-limit");
 
@@ -41,8 +41,8 @@ app.use(express.json({ limit: "1mb" }));
 // Prevent HTTP Parameter Pollution attacks
 app.use(hpp());
 
-// Sanitize MongoDB operator injection from req.body, req.params, req.query
-app.use(mongoSanitize());
+// // Sanitize MongoDB operator injection from req.body, req.params, req.query
+// app.use(mongoSanitize());
 
 // Set secure HTTP headers
 app.use(helmet());

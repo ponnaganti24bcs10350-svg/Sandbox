@@ -28,6 +28,18 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
   const [isWebcamShared, setIsWebcamShared] = useState(false);
   const [showTabSwitchWarning, setShowTabSwitchWarning] = useState(false);
   const [isSwapped, setIsSwapped] = useState(false);
+  const isReloadingRef = useRef(false);
+  useEffect(() => {
+  const handleBeforeUnload = () => {
+    isReloadingRef.current = true;
+  };
+
+  window.addEventListener("beforeunload", handleBeforeUnload);
+
+  return () => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  };
+}, []);
 
   useEffect(() => {
     setChallenge(null);
@@ -117,11 +129,16 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
     }
     
     if (targetChallengeId) {
-      setAssessmentSession(null);
-      setIntegrityScore(100);
-      setProctoringActive(false);
-      setIsSwapped(false);
-    }
+  console.log(
+    "RESETTING INTEGRITY TO 100",
+    targetChallengeId
+  );
+
+  setAssessmentSession(null);
+  setIntegrityScore(100);
+  setProctoringActive(false);
+  setIsSwapped(false);
+}
     return false;
   } catch (error) {
     console.error("Failed to check active assessment:", error);
@@ -135,12 +152,14 @@ useEffect(() => {
   const assessmentStarted =
     sessionStorage.getItem("assessmentStarted");
 
-  // Fresh login → ALWAYS Start Assessment
-  if (justLoggedIn === "true") {
-    sessionStorage.removeItem("justLoggedIn");
-    setCheckingAssessment(false);
-    return;
-  }
+ // Fresh login → check if this challenge already has an active assessment
+if (justLoggedIn === "true") {
+  sessionStorage.removeItem("justLoggedIn");
+
+   checkActiveAssessment();
+
+  return;
+}
 
   // Resume ONLY if Start Proctoring
   // was previously clicked
@@ -195,8 +214,16 @@ useEffect(() => {
       if (!response.ok) return;
 
       if (typeof data.integrityScore === "number") {
-        setIntegrityScore(data.integrityScore);
-      }
+  console.log(
+    "INTEGRITY RESPONSE:",
+    type,
+    data.integrityScore
+  );
+
+ setIntegrityScore((prev) =>
+    Math.min(prev, data.integrityScore)
+  );
+}
       if (data.lockedUntil) {
         setAssessmentSession(prev => prev ? { ...prev, lockedUntil: data.lockedUntil } : prev);
       }
@@ -225,12 +252,16 @@ useEffect(() => {
     const data = await response.json();
 
     if (response.status === 409 && data.session) {
-      const existingSession = {
-        id: data.session._id || data.session.id,
-        startedAt: data.session.startedAt,
-        integrityScore: data.session.integrityScore ?? 100,
-        challengeId: data.session.challenge,
-      };
+    const existingSession = {
+  id: data.session._id || data.session.id,
+  startedAt: data.session.startedAt,
+  integrityScore: data.session.integrityScore ?? 100,
+  challengeId:
+    data.session.challengeId ||
+    data.session.challenge,
+  status: data.session.status || "active",
+  lockedUntil: data.session.lockedUntil || null,
+};
 
       setAssessmentSession(existingSession);
       setIntegrityScore(existingSession.integrityScore);
@@ -429,10 +460,14 @@ useEffect(() => {
   useEffect(() => {
     if (!proctoringActive || !assessmentSession?.id) return;
 
-    const handleBlur = () => reportIntegrityEvent("window_blur");
-    const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) reportIntegrityEvent("fullscreen_exit");
-    };
+   const handleFullscreenChange = () => {
+  if (
+    !document.fullscreenElement &&
+    !isReloadingRef.current
+  ) {
+    reportIntegrityEvent("fullscreen_exit");
+  }
+};
 
     const handleCopy = (e) => { e.preventDefault(); reportIntegrityEvent("copy"); };
     const handlePaste = (e) => { e.preventDefault(); reportIntegrityEvent("paste"); };
@@ -448,7 +483,6 @@ useEffect(() => {
     // };
     const handleKeyDown = () => {};
 
-    window.addEventListener("blur", handleBlur);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("copy", handleCopy, true);
     document.addEventListener("paste", handlePaste, true);
@@ -458,7 +492,6 @@ useEffect(() => {
     document.addEventListener("contextmenu", handleContextMenu);
 
     return () => {
-      window.removeEventListener("blur", handleBlur);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("copy", handleCopy, true);
       document.removeEventListener("paste", handlePaste, true);
@@ -632,7 +665,11 @@ useEffect(() => {
         integrityScore: data.assessment.integrityScore,
       }));
 
-  setIntegrityScore(data.assessment.integrityScore);
+ if (typeof data.integrityScore === "number") {
+  setIntegrityScore((prev) =>
+    Math.min(prev, data.integrityScore)
+  );
+}
 setProctoringActive(false);
 setIsScreenShared(false);
 if (screenStream) {
@@ -691,7 +728,50 @@ sessionStorage.removeItem("assessmentStarted");
     document.addEventListener("mousemove", resize);
     document.addEventListener("mouseup", stopResize);
   }
+  const isLockedOut =
+  assessmentSession?.lockedUntil &&
+  new Date(assessmentSession.lockedUntil) > new Date();
+useEffect(() => {
+  if (!assessmentSession?.lockedUntil) return;
 
+  const lockedUntil = new Date(
+    assessmentSession.lockedUntil
+  ).getTime();
+
+  const remaining = lockedUntil - Date.now();
+
+  if (remaining <= 0) {
+    setIntegrityScore(100);
+
+    setAssessmentSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            integrityScore: 100,
+            lockedUntil: null,
+          }
+        : prev
+    );
+
+    return;
+  }
+
+  const timer = setTimeout(() => {
+    setIntegrityScore(100);
+
+    setAssessmentSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            integrityScore: 100,
+            lockedUntil: null,
+          }
+        : prev
+    );
+  }, remaining);
+
+  return () => clearTimeout(timer);
+}, [assessmentSession?.lockedUntil]);
   if (checkingAssessment) {
   return (
     <div className="badge-screen-container">
@@ -1024,7 +1104,7 @@ if (proctoringActive && showTabSwitchWarning) {
           <div className="terminal-panel" style={{ height: `${terminalHeight}px` }}>
             <TestResults result={result} isRunning={isRunning} />
           </div>
-          </div>   {/* workspace-main */}
+          </div>   
       )}
     </div>
   );

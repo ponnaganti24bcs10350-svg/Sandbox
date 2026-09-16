@@ -343,21 +343,19 @@ The API should preserve existing HTTP status conventions.
  "tests/existing.test.js": `
 describe("User API", () => {
   test("authenticated users can retrieve a valid user profile", async () => {
-    // Existing behaviour: authenticated profile requests return
-    // the expected public profile structure.
+   
   });
 
   test("authenticated users can update their editable profile fields", async () => {
-    // Existing behaviour: valid profile updates continue to work.
+   
   });
 
   test("missing users return the expected not-found response", async () => {
-    // Existing behaviour: requests for resources that do not exist
-    // return the appropriate error response.
+   
   });
 
   test("activity is returned in reverse chronological order", async () => {
-    // Existing behaviour: activity remains newest-first.
+   
   });
 });
 `,
@@ -401,7 +399,7 @@ Your team lead has asked you to investigate the performance degradation and fix 
 
     files: {
       "server/challenge2/routes/postRoutes.js": "const express = require(\"express\");\nconst { getPosts } = require(\"../controllers/postController\");\n\nconst router = express.Router();\n\nrouter.get(\"/\", getPosts);\n\nmodule.exports = router;",
-      "server/challenge2/controllers/postController.js": "const Post = require(\"../models/Post\");\nconst User = require(\"../models/User\");\n\nasync function getPosts(req, res) {\n  try {\n    const page = Math.max(\n      parseInt(req.query.page, 10) || 1,\n      1\n    );\n\n    const limit = Math.min(\n      parseInt(req.query.limit, 10) || 20,\n      100\n    );\n\n    const skip = (page - 1) * limit;\n\n    // Intentionally inefficient implementation.\n    // The candidate must investigate why this becomes slow\n    // with a large dataset.\n    const posts = await Post.find({\n      status: \"published\",\n    })\n      .sort({ createdAt: -1 })\n      .skip(skip)\n      .limit(limit)\n      .lean();\n\n    const result = [];\n\n    for (const post of posts) {\n      const author = await User.findById(post.authorId).lean();\n\n      result.push({\n        id: post._id,\n        title: post.title,\n        content: post.content,\n        tags: post.tags,\n        createdAt: post.createdAt,\n        author: author\n          ? {\n              id: author._id,\n              name: author.name,\n              avatar: author.avatar,\n            }\n          : null,\n      });\n    }\n\n    // Additional unnecessary database work.\n    const total = await Post.countDocuments({\n      status: \"published\",\n    });\n\n    return res.status(200).json({\n      data: result,\n      pagination: {\n        page,\n        limit,\n        total,\n        totalPages: Math.ceil(total / limit),\n      },\n    });\n  } catch (error) {\n    console.error(error);\n\n    return res.status(500).json({\n      message: \"Failed to retrieve posts\",\n    });\n  }\n}\n\nmodule.exports = {\n  getPosts,\n};",
+      "server/challenge2/controllers/postController.js": "const Post = require(\"../models/Post\");\nconst User = require(\"../models/User\");\n\nasync function getPosts(req, res) {\n  try {\n    const page = Math.max(\n      parseInt(req.query.page, 10) || 1,\n      1\n    );\n\n    const limit = Math.min(\n      parseInt(req.query.limit, 10) || 20,\n      100\n    );\n\n    const skip = (page - 1) * limit;\n\n      const posts = await Post.find({\n      status: \"published\",\n    })\n      .sort({ createdAt: -1 })\n      .skip(skip)\n      .limit(limit)\n      .lean();\n\n    const result = [];\n\n    for (const post of posts) {\n      const author = await User.findById(post.authorId).lean();\n\n      result.push({\n        id: post._id,\n        title: post.title,\n        content: post.content,\n        tags: post.tags,\n        createdAt: post.createdAt,\n        author: author\n          ? {\n              id: author._id,\n              name: author.name,\n              avatar: author.avatar,\n            }\n          : null,\n      });\n    }\n\n   \n    const total = await Post.countDocuments({\n      status: \"published\",\n    });\n\n    return res.status(200).json({\n      data: result,\n      pagination: {\n        page,\n        limit,\n        total,\n        totalPages: Math.ceil(total / limit),\n      },\n    });\n  } catch (error) {\n    console.error(error);\n\n    return res.status(500).json({\n      message: \"Failed to retrieve posts\",\n    });\n  }\n}\n\nmodule.exports = {\n  getPosts,\n};",
       "server/challenge2/models/Post.js": "const mongoose = require(\"mongoose\");\n\nconst postSchema = new mongoose.Schema(\n  {\n    authorId: {\n      type: mongoose.Schema.Types.ObjectId,\n      required: true,\n      index: true,\n    },\n\n    title: {\n      type: String,\n      required: true,\n    },\n\n    content: {\n      type: String,\n      required: true,\n    },\n\n    status: {\n      type: String,\n      enum: [\"published\", \"draft\"],\n      default: \"published\",\n      index: true,\n    },\n\n    tags: {\n      type: [String],\n      default: [],\n    },\n\n    createdAt: {\n      type: Date,\n      default: Date.now,\n      index: true,\n    },\n  },\n  {\n    versionKey: false,\n  }\n);\n\nmodule.exports = mongoose.model(\"Challenge2Post\", postSchema);",
       "server/challenge2/models/User.js": "const mongoose = require(\"mongoose\");\n\nconst userSchema = new mongoose.Schema(\n  {\n    name: {\n      type: String,\n      required: true,\n    },\n\n    avatar: {\n      type: String,\n      default: null,\n    },\n  },\n  {\n    versionKey: false,\n  }\n);\n\nmodule.exports = mongoose.model(\"Challenge2User\", userSchema);",
       "server/challenge2/tests/existing.test.js": "describe(\"Posts API\", () => {\n  test(\"returns published posts\", () => {\n    expect(true).toBe(true);\n  });\n\n  test(\"returns posts in newest-first order\", () => {\n    expect(true).toBe(true);\n  });\n\n  test(\"includes author information\", () => {\n    expect(true).toBe(true);\n  });\n\n  test(\"supports pagination\", () => {\n    expect(true).toBe(true);\n  });\n\n  test(\"handles missing authors safely\", () => {\n    expect(true).toBe(true);\n  });\n});",
@@ -682,19 +680,19 @@ Deletes a post when the authenticated user is allowed to delete it.
       "tests/existing.test.js": `
 describe("CampusConnect production API", () => {
   test("valid users can log in", async () => {
-    // Existing authentication behaviour must remain available.
+   
   });
 
   test("users can read their own post", async () => {
-    // Existing post behaviour must remain available.
+   
   });
 
   test("missing posts return the documented response", async () => {
-    // Existing not-found behaviour must remain available.
+   
   });
 
   test("post responses preserve the documented shape", async () => {
-    // Existing API response behaviour must remain available.
+   
   });
 });
 `,
