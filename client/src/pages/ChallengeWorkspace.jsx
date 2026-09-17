@@ -7,7 +7,12 @@ import { getApiUrl } from "../config/api";
 
 const API_URL = getApiUrl();
 
-function ChallengeWorkspace({ selectedChallenge,setSelectedChallenge }) {
+function ChallengeWorkspace({
+  selectedChallenge,
+  setSelectedChallenge,
+  onStartAssessment,
+  assessmentReady = false,
+}) {
   const challengeId = selectedChallenge?.challengeId || null;
 
   const [challenge, setChallenge] = useState(null);
@@ -49,6 +54,12 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
     setIsNavigating(false);
     setIsSwapped(false);
   }, [challengeId]);
+
+  useEffect(() => {
+    if (assessmentReady) {
+      handleStartProctoring();
+    }
+  }, [assessmentReady]);
   useEffect(() => {
     async function loadSelectedChallenge() {
       if (!challengeId) return;
@@ -967,10 +978,10 @@ if (proctoringActive && showTabSwitchWarning) {
             <div className="badge-footer">
               <button
                 className="badge-start-btn"
-                onClick={handleStartProctoring}
+                onClick={() => onStartAssessment?.()}
                 disabled={proctoringActive}
               >
-                {proctoringActive ? "🛡 Proctoring On" : "🛡 Start Proctoring"}
+                🛡 Start Proctoring
               </button>
             </div>
           </div>

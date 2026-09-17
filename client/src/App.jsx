@@ -15,6 +15,7 @@ import Instructions from "./pages/Instructions";
 function App() {
   
   const [verificationData, setVerificationData] = useState(null);
+  const [assessmentReady, setAssessmentReady] = useState(false);
   const [page, setPage] = useState(() => {
     const token = localStorage.getItem("token");
 
@@ -33,7 +34,7 @@ function App() {
       }
     }
 
-    return "instructions";
+    return "challenge";
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -129,8 +130,6 @@ function handleLogin() {
 
       if (loggedInUser.role === "company") {
         setPage("company");
-      } else {
-        setPage("instructions");
       }
     setUser(loggedInUser);
     setSelectedChallenge(null);
@@ -228,6 +227,7 @@ useEffect(() => {
 
     setUser(null);
     setSelectedChallenge(null);
+    setAssessmentReady(false);
     setMenuOpen(false);
 
     setPage("login");
@@ -295,7 +295,12 @@ useEffect(() => {
       {/* ================= INSTRUCTIONS ================= */}
 
       {page === "instructions" && (
-        <Instructions onProceed={() => setPage("challenge")} />
+        <Instructions
+          onProceed={() => {
+            setPage("challenge");
+            setAssessmentReady(true);
+          }}
+        />
       )}
 
       {/* ================= COMPANY DASHBOARD ================= */}
@@ -427,6 +432,11 @@ useEffect(() => {
                   selectedChallenge
                 }
                 setSelectedChallenge={setSelectedChallenge}
+                onStartAssessment={() => {
+                  setAssessmentReady(false);
+                  setPage("instructions");
+                }}
+                assessmentReady={assessmentReady}
               />
             )}
 
