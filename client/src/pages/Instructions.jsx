@@ -45,24 +45,24 @@ export default function Instructions({ onProceed }) {
               <tbody>
                 <tr>
                   <td>
-                    <span className="hr-badge warning">Tab Switch</span>
+                    <span className="hr-badge warning">Tab / Browser Switch</span>
                   </td>
-                  <td>-3 points</td>
-                  <td>Switching to another browser tab or minimizing the window.</td>
+                  <td>-5 points</td>
+                  <td>Switching to another browser tab, another application, or minimizing the window.</td>
                 </tr>
                 <tr>
                   <td>
                     <span className="hr-badge warning">Copy / Paste / Cut</span>
                   </td>
-                  <td>-5 points</td>
-                  <td>Copying from or pasting to outside sources.</td>
+                  <td>-3 points</td>
+                  <td>Copying from or pasting to outside sources (Ctrl/Cmd + C, V, or X).</td>
                 </tr>
                 <tr>
                   <td>
                     <span className="hr-badge warning">Exit Full-Screen</span>
                   </td>
-                  <td>-5 points</td>
-                  <td>Manually exiting full-screen mode during the test.</td>
+                  <td>-4 points</td>
+                  <td>Manually exiting full-screen mode during the test (-3 points if done via the Esc key).</td>
                 </tr>
                 <tr>
                   <td>
@@ -97,6 +97,9 @@ export default function Instructions({ onProceed }) {
             <span className="hr-tag">Copy & Paste</span>
             <span className="hr-tag">Exiting Fullscreen</span>
             <span className="hr-tag">Stopping Streams</span>
+            <span className="hr-tag">Opening DevTools</span>
+            <span className="hr-tag">Right-Click Menu</span>
+            <span className="hr-tag">Screenshots</span>
           </div>
         </div>
 

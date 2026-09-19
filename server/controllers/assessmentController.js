@@ -195,6 +195,7 @@ const recordIntegrityEvent = async (req, res) => {
       "tab_switch",
       "window_blur",
       "fullscreen_exit",
+      "fullscreen_exit_esc",
       "copy",
       "paste",
       "cut",
@@ -227,12 +228,13 @@ const recordIntegrityEvent = async (req, res) => {
     }
 
     const penalties = {
-      tab_switch: 3,
-      window_blur: 4,
-      fullscreen_exit: 5,
-      copy: 5,
-      paste: 5,
-      cut: 5,
+      tab_switch: 5,
+      window_blur: 5,
+      fullscreen_exit: 4,
+      fullscreen_exit_esc: 3,
+      copy: 3,
+      paste: 3,
+      cut: 3,
       right_click: 2,
       shortcut: 3,
       multiple_session: 15,

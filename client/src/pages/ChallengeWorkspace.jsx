@@ -38,6 +38,14 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
   const [panelWidth, setPanelWidth] = useState(280); // width of the challenge/question panel, resizable
   const [showResetConfirm, setShowResetConfirm] = useState(false); // custom modal, replaces window.confirm
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+  // Shown when requestFullscreen() silently no-ops because the browser
+  // window was already in its OWN native full-screen mode (F11 / the
+  // macOS green-dot) before the assessment ever asked for fullscreen. In
+  // that case document.fullscreenElement never gets set, no
+  // "fullscreenchange" event fires, and the "Resume Fullscreen" button
+  // looks completely broken to the user - see enterFullscreen() below.
+  const [fullscreenHint, setFullscreenHint] = useState(false);
+  const lastEscapeAtRef = useRef(0);
   const isReloadingRef = useRef(false);
   useEffect(() => {
   const handleBeforeUnload = () => {
@@ -414,6 +422,35 @@ useEffect(() => {
     }
   }
 
+  // Centralised fullscreen entry. Used on start, on "Resume Fullscreen",
+  // and on "Resume Assessment" so all three behave the same way and all
+  // three get the same stuck-in-native-fullscreen detection below.
+  async function enterFullscreen() {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (error) {
+      console.warn("Fullscreen could not be enabled:", error);
+    }
+
+    // Give the browser a moment to fire "fullscreenchange" (or not).
+    setTimeout(() => {
+      if (document.fullscreenElement) {
+        setFullscreenHint(false);
+      } else {
+        // requestFullscreen() resolved (or threw) but the page still
+        // isn't fullscreen. The most common cause is that the browser
+        // window itself was already full-screen outside of the
+        // Fullscreen API (F11, or macOS's native full-screen), which
+        // blocks a page from layering its own fullscreen on top in some
+        // browsers. Surface this so the user knows to shrink/un-fullscreen
+        // the window first instead of clicking a button that does nothing.
+        setFullscreenHint(true);
+      }
+    }, 400);
+  }
+
   async function handleStartProctoring(targetId = null) {
     try {
       setResult(null);
@@ -440,13 +477,7 @@ useEffect(() => {
       sessionStorage.setItem("assessmentStarted", "true");
       setProctoringActive(true);
 
-      if (document.documentElement.requestFullscreen) {
-        try {
-          await document.documentElement.requestFullscreen();
-        } catch (fullscreenError) {
-          console.warn("Fullscreen could not be enabled:", fullscreenError);
-        }
-      }
+      await enterFullscreen();
 
       await revealChallenge(session);
     } catch (error) {
@@ -477,12 +508,19 @@ useEffect(() => {
     if (!proctoringActive || !assessmentSession?.id) return;
 
    const handleFullscreenChange = () => {
-  setIsFullscreen(!!document.fullscreenElement);
-  if (
-    !document.fullscreenElement &&
-    !isReloadingRef.current
-  ) {
-    reportIntegrityEvent("fullscreen_exit");
+  const nowFullscreen = !!document.fullscreenElement;
+  setIsFullscreen(nowFullscreen);
+  if (nowFullscreen) {
+    setFullscreenHint(false);
+  }
+  if (!nowFullscreen && !isReloadingRef.current) {
+    // Pressing Esc is the browser's own built-in way of leaving fullscreen
+    // and can't be preventDefault()'d, so a lot of these are just an
+    // instinctive "get me out" tap rather than someone deliberately
+    // switching to another app. Treat it as a lighter violation than exiting
+    // fullscreen any other way (Alt-F4, window controls, OS gestures, etc.).
+    const viaEscape = Date.now() - lastEscapeAtRef.current < 1000;
+    reportIntegrityEvent(viaEscape ? "fullscreen_exit_esc" : "fullscreen_exit");
   }
 };
 
@@ -504,22 +542,50 @@ useEffect(() => {
       reportIntegrityEvent("window_blur");
     };
 
-    // const handleKeyDown = (e) => {
-    //   const key = e.key.toLowerCase();
-    //   if ((e.ctrlKey || e.metaKey) && ["c", "v", "x"].includes(key)) {
-    //     e.preventDefault();
-    //     reportIntegrityEvent("shortcut", { key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey });
-    //   }
-    // };
-    const handleKeyDown = () => {};
+    // Copy/cut/paste via Ctrl+C/V/X are already caught above through the
+    // browser's native copy/paste/cut events - preventDefault there also
+    // blocks the shortcut itself, so nothing extra is needed for those.
+    // This handler covers what those three events don't: remembering an
+    // Escape press (so handleFullscreenChange can tell it apart from other
+    // fullscreen exits), blocking DevTools shortcuts, and a best-effort
+    // screenshot mitigation.
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" || e.key === "Esc") {
+        lastEscapeAtRef.current = Date.now();
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      const isDevToolsShortcut =
+        key === "f12" ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && ["i", "j", "c"].includes(key)) ||
+        ((e.ctrlKey || e.metaKey) && key === "u");
+
+      if (isDevToolsShortcut) {
+        e.preventDefault();
+        reportIntegrityEvent("shortcut", { key: e.key, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey });
+        return;
+      }
+
+      if (key === "printscreen") {
+        // IMPORTANT LIMITATION: PrintScreen is captured by the OS before
+        // the browser (or any web page's JS) ever sees it, so this can
+        // NEVER actually stop a screenshot from being taken - there is no
+        // web API that can. All we can do is a best-effort cleanup: on
+        // Windows, PrtScn also copies the captured image to the clipboard,
+        // so we immediately try to overwrite the clipboard to blank it out.
+        // This does not touch the integrity score, per design - it's a
+        // "block if we can" measure, not a violation to penalize.
+        navigator.clipboard?.writeText("").catch(() => {});
+      }
+    };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("copy", handleCopy, true);
     document.addEventListener("paste", handlePaste, true);
     document.addEventListener("cut", handleCut, true);
-    // document.addEventListener("contextmenu", handleContextMenu);
-    // document.addEventListener("keydown", handleKeyDown, true);
     document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("blur", handleWindowBlur);
 
     return () => {
@@ -527,9 +593,8 @@ useEffect(() => {
       document.removeEventListener("copy", handleCopy, true);
       document.removeEventListener("paste", handlePaste, true);
       document.removeEventListener("cut", handleCut, true);
-      // document.removeEventListener("contextmenu", handleContextMenu);
-      // document.removeEventListener("keydown", handleKeyDown, true);
       document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("keydown", handleKeyDown, true);
       window.removeEventListener("blur", handleWindowBlur);
     };
   }, [proctoringActive, assessmentSession?.id]);
@@ -989,7 +1054,7 @@ if (assessmentAlreadyActive && !challenge) {
               const webcamShared = await requestWebcam();
               if (!webcamShared) return;
 
-              await document.documentElement.requestFullscreen();
+              await enterFullscreen();
 
               const token = localStorage.getItem("token");
 
@@ -1059,16 +1124,20 @@ if (proctoringActive && !isFullscreen) {
         </div>
         <h2>Fullscreen Required</h2>
         <p>You must stay in fullscreen to continue the assessment. Exiting fullscreen negatively impacts your integrity score.</p>
+        {fullscreenHint && (
+          <p style={{ color: "#fbbf24", fontSize: "14px", lineHeight: "1.5" }}>
+            This button isn't doing anything because your browser window is already
+            running in its own full-screen mode from before the test started (e.g. you
+            pressed <strong>F11</strong>, or your browser/OS was already maximized to
+            full-screen). Please exit that first — press <strong>F11</strong> again
+            (or your browser's full-screen shortcut) to shrink the window back down —
+            then click the button below.
+          </p>
+        )}
         <button
           className="badge-start-btn"
           style={{ backgroundColor: "#ef4444" }}
-          onClick={async () => {
-            try {
-              await document.documentElement.requestFullscreen();
-            } catch (error) {
-              console.warn("Could not re-enter fullscreen:", error);
-            }
-          }}
+          onClick={enterFullscreen}
         >
           Resume Fullscreen
         </button>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+
 import CompanyDashboard from "./pages/CompanyDashboard";
 import ChallengeWorkspace from "./pages/ChallengeWorkspace";
 import Leaderboard from "./pages/Leaderboard";
@@ -11,8 +12,15 @@ import Profile from "./pages/Profile";
 import StudentInvitations from "./pages/StudentInvitations";
 import EmailVerification from "./pages/EmailVerification";
 import Instructions from "./pages/Instructions";
+import { useBlockAIOverlays } from "./utils/aiOverlayBlocker";
 
 function App() {
+  // This hook already existed in utils/aiOverlayBlocker.js but was never
+  // actually called anywhere, so it did nothing. Mounting it here runs it
+  // on every page (including the company dashboard), which is what
+  // watches for/removes injected ChatGPT/Gemini/Copilot/etc. overlay UI.
+  useBlockAIOverlays();
+
   
   const [verificationData, setVerificationData] = useState(null);
   const [assessmentReady, setAssessmentReady] = useState(false);
