@@ -1,0 +1,29 @@
+[
+  {
+    "_id": "68b7a2010000000000000001",
+    "authorId": "68b7a1010000000000000001",
+    "title": "Building Better APIs",
+    "content": "A discussion about API design and backend engineering.",
+    "status": "published",
+    "tags": ["api", "backend"],
+    "createdAt": "2026-08-01T10:00:00.000Z"
+  },
+  {
+    "_id": "68b7a2010000000000000002",
+    "authorId": "68b7a1010000000000000002",
+    "title": "Scaling Node.js Applications",
+    "content": "Lessons from scaling a Node.js application.",
+    "status": "published",
+    "tags": ["node", "performance"],
+    "createdAt": "2026-08-02T10:00:00.000Z"
+  },
+  {
+    "_id": "68b7a2010000000000000003",
+    "authorId": "68b7a1010000000000000003",
+    "title": "Database Performance",
+    "content": "Understanding database queries and indexes.",
+    "status": "published",
+    "tags": ["mongodb", "database"],
+    "createdAt": "2026-08-03T10:00:00.000Z"
+  }
+]

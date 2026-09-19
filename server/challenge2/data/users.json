@@ -1,0 +1,27 @@
+[
+  {
+    "_id": "68b7a1010000000000000001",
+    "name": "Aarav Sharma",
+    "avatar": "/avatars/aarav.png"
+  },
+  {
+    "_id": "68b7a1010000000000000002",
+    "name": "Diya Patel",
+    "avatar": "/avatars/diya.png"
+  },
+  {
+    "_id": "68b7a1010000000000000003",
+    "name": "Kabir Rao",
+    "avatar": "/avatars/kabir.png"
+  },
+  {
+    "_id": "68b7a1010000000000000004",
+    "name": "Meera Nair",
+    "avatar": "/avatars/meera.png"
+  },
+  {
+    "_id": "68b7a1010000000000000005",
+    "name": "Rohan Gupta",
+    "avatar": "/avatars/rohan.png"
+  }
+]
