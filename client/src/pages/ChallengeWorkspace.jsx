@@ -1,11 +1,39 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 // Or if using Vite src imports: import badgeBg from "../assets/pexels-alipazani-2810836.jpg";
 import FileExplorer from "../components/FileExplorer";
 import CodeEditor from "../components/CodeEditor";
 import TestResults from "../components/TestResults";
 import { getApiUrl } from "../config/api";
+import { useExamGuard, isDevToolsShortcut, isScreenshotShortcut } from "../utils/examGuard";
 
 const API_URL = getApiUrl();
+
+/*
+ * "Is the app actually filling the screen?"
+ *
+ * document.fullscreenElement only knows about the Fullscreen API. If the
+ * browser window is already in its OWN native full-screen (F11 on
+ * Windows/Linux, the green dot on macOS, or a kiosk/TV browser), calling
+ * requestFullscreen() is a silent no-op: no "fullscreenchange" event ever
+ * fires and fullscreenElement stays null forever. That is why the "Resume
+ * Fullscreen" button looked completely dead - the user WAS full-screen,
+ * the app just refused to believe it, with no way forward.
+ *
+ * So we also compare the viewport against the physical screen. If the
+ * window covers it, that counts as full-screen for the assessment.
+ */
+export function isEffectivelyFullscreen() {
+  if (document.fullscreenElement) return true;
+
+  if (typeof window === "undefined" || !window.screen) return false;
+
+  const widthDiff = Math.abs(window.screen.width - window.innerWidth);
+  const heightDiff = Math.abs(window.screen.height - window.innerHeight);
+
+  // A normal window always loses at least the tab strip + address bar
+  // (~60-120px). A few px of tolerance covers rounding/zoom.
+  return widthDiff <= 5 && heightDiff <= 5;
+}
 
 function ChallengeWorkspace({
   selectedChallenge,
@@ -37,7 +65,7 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
   const [isSwapped, setIsSwapped] = useState(false);
   const [panelWidth, setPanelWidth] = useState(280); // width of the challenge/question panel, resizable
   const [showResetConfirm, setShowResetConfirm] = useState(false); // custom modal, replaces window.confirm
-  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+  const [isFullscreen, setIsFullscreen] = useState(isEffectivelyFullscreen());
   // Shown when requestFullscreen() silently no-ops because the browser
   // window was already in its OWN native full-screen mode (F11 / the
   // macOS green-dot) before the assessment ever asked for fullscreen. In
@@ -46,6 +74,9 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
   // looks completely broken to the user - see enterFullscreen() below.
   const [fullscreenHint, setFullscreenHint] = useState(false);
   const lastEscapeAtRef = useRef(0);
+  // Last value we acted on, so the resize/poll watcher below only reports a
+  // real true -> false transition instead of firing on every resize tick.
+  const wasFullscreenRef = useRef(isEffectivelyFullscreen());
   const isReloadingRef = useRef(false);
   useEffect(() => {
   const handleBeforeUnload = () => {
@@ -119,7 +150,15 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
     loadSelectedChallenge();
   }, [challengeId, setSelectedChallenge]);
 
-  const checkActiveAssessment = async (targetChallengeId = null) => {
+  /*
+   * @param targetChallengeId  which question to check (defaults to the open one)
+   * @param options.isNavigation  true when called while moving between
+   *        questions with Next/Previous. Navigation must not pop the
+   *        "Assessment Already Active" resume card - that card is only for
+   *        someone re-entering/reloading mid-assessment.
+   */
+  const checkActiveAssessment = async (targetChallengeId = null, options = {}) => {
+  const { isNavigation = false } = options;
   try {
     const token = localStorage.getItem("token");
 
@@ -147,12 +186,19 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
 
     if (data.success && data.active) {
       setAssessmentSession(data.session);
-      setIntegrityScore(data.session.integrityScore || 100);
-      if (!targetChallengeId) setAssessmentAlreadyActive(true);
+      // This session belongs to one challenge only, so use its own saved
+      // score as-is. Never blend it with whatever the previous question
+      // happened to be showing.
+      setIntegrityScore(
+        typeof data.session.integrityScore === "number"
+          ? data.session.integrityScore
+          : 100
+      );
+      if (!isNavigation) setAssessmentAlreadyActive(true);
       return true;
     }
     
-    if (targetChallengeId) {
+    if (isNavigation) {
   // No active session yet for THIS question - it's either brand new or was
   // never started, so its own score is 100. This does not touch any other
   // question's score - each question's integrity is isolated and, if it
@@ -168,7 +214,18 @@ const [assessmentAlreadyActive, setAssessmentAlreadyActive] = useState(false);
     console.error("Failed to check active assessment:", error);
     return false;
   } finally {
-    if (!targetChallengeId) setCheckingAssessment(false);
+    /*
+     * ALWAYS clear the loading gate.
+     *
+     * This used to be `if (!targetChallengeId)`, which meant that any
+     * call that passed a challenge id (for example the check on first
+     * load when a specific challenge was selected) left
+     * checkingAssessment stuck at true forever - the screen sat on
+     * "Checking assessment..." and the welcome card, the Start
+     * Proctoring button and therefore the Instructions page were never
+     * reachable.
+     */
+    setCheckingAssessment(false);
   }
 };
 useEffect(() => {
@@ -180,7 +237,7 @@ useEffect(() => {
 if (justLoggedIn === "true") {
   sessionStorage.removeItem("justLoggedIn");
 
-   checkActiveAssessment();
+   checkActiveAssessment(challengeId || null);
 
   return;
 }
@@ -218,6 +275,23 @@ useEffect(() => {
   const reportIntegrityEvent = async (type, metadata = {}) => {
     if (!assessmentSession?.id) return;
 
+    /*
+     * PER-QUESTION ISOLATION (client side).
+     *
+     * Only report an event when the session we are about to hit really
+     * is the session for the question currently on screen. Without this,
+     * a stale session id left over from the previous question could get
+     * penalised for something the candidate did on a different question,
+     * which is exactly the "one cheat locks everything" bug.
+     */
+    const sessionChallengeId =
+      assessmentSession.challengeId || assessmentSession.challenge || null;
+    const openChallengeId = challenge?.challengeId || challengeId || null;
+
+    if (sessionChallengeId && openChallengeId && sessionChallengeId !== openChallengeId) {
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
@@ -237,19 +311,23 @@ useEffect(() => {
       const data = await response.json();
       if (!response.ok) return;
 
-      if (typeof data.integrityScore === "number") {
-  console.log(
-    "INTEGRITY RESPONSE:",
-    type,
-    data.integrityScore
-  );
+      /*
+       * Set the score to exactly what the server says for THIS question.
+       * It used to be Math.min(previousScore, newScore), which meant a
+       * low score carried over from another question and could never go
+       * back up - so one violation appeared to poison every question.
+       */
+      if (
+        typeof data.integrityScore === "number" &&
+        (!data.challengeId || data.challengeId === openChallengeId)
+      ) {
+        setIntegrityScore(data.integrityScore);
+      }
 
- setIntegrityScore((prev) =>
-    Math.min(prev, data.integrityScore)
-  );
-}
-      if (data.lockedUntil) {
-        setAssessmentSession(prev => prev ? { ...prev, lockedUntil: data.lockedUntil } : prev);
+      if (!data.challengeId || data.challengeId === openChallengeId) {
+        setAssessmentSession((prev) =>
+          prev ? { ...prev, lockedUntil: data.lockedUntil || null } : prev
+        );
       }
     } catch (error) {
       console.error("Integrity event error:", error);
@@ -349,8 +427,28 @@ useEffect(() => {
     return revealedChallenge;
   }
 
+  /*
+   * A MediaStream object can outlive its tracks: once a track ends (the
+   * user hit "Stop sharing", revoked the permission, closed the camera
+   * lid, or the OS reclaimed the device) the stream variable is still
+   * truthy but completely dead. The old guards here were
+   * `if (isWebcamShared && webcamStream) return true`, so once state got
+   * out of sync we would silently "succeed" and NEVER ask for the camera
+   * again. Checking for a live track is what makes the prompt come back.
+   */
+  function hasLiveVideo(stream) {
+    return (
+      !!stream &&
+      stream.getVideoTracks().some((track) => track.readyState === "live")
+    );
+  }
+
   async function requestScreenShare() {
-    if (isScreenShared && screenStream) return true;
+    if (hasLiveVideo(screenStream)) {
+      setIsScreenShared(true);
+      screenSharedRef.current = true;
+      return true;
+    }
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { displaySurface: "monitor" },
@@ -393,8 +491,19 @@ useEffect(() => {
   }
 
   async function requestWebcam() {
-    if (isWebcamShared && webcamStream) return true;
+    if (hasLiveVideo(webcamStream)) {
+      setIsWebcamShared(true);
+      return true;
+    }
+
     try {
+      /*
+       * Ask for the camera explicitly, every time it isn't already live.
+       * If the permission was previously denied for this site the browser
+       * throws NotAllowedError instead of showing the prompt again - we
+       * surface that below so the candidate knows to re-enable it from the
+       * padlock icon rather than being left staring at nothing.
+       */
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: false,
@@ -418,6 +527,21 @@ useEffect(() => {
       return true;
     } catch (error) {
       console.error("Webcam access failed:", error);
+
+      if (error?.name === "NotAllowedError" || error?.name === "SecurityError") {
+        setResult({
+          passed: false,
+          message:
+            "Camera permission is blocked for this site. Click the padlock icon in your browser's address bar, set Camera to Allow, then try again.",
+        });
+      } else if (error?.name === "NotFoundError" || error?.name === "NotReadableError") {
+        setResult({
+          passed: false,
+          message:
+            "No usable camera was found. Please connect a camera (and close any other app using it), then try again.",
+        });
+      }
+
       return false;
     }
   }
@@ -436,7 +560,12 @@ useEffect(() => {
 
     // Give the browser a moment to fire "fullscreenchange" (or not).
     setTimeout(() => {
-      if (document.fullscreenElement) {
+      if (isEffectivelyFullscreen()) {
+        // Either the Fullscreen API worked, or the window was already
+        // covering the whole screen natively (F11). Both are fine - let
+        // the candidate through instead of trapping them on this screen.
+        wasFullscreenRef.current = true;
+        setIsFullscreen(true);
         setFullscreenHint(false);
       } else {
         // requestFullscreen() resolved (or threw) but the page still
@@ -451,33 +580,67 @@ useEffect(() => {
     }, 400);
   }
 
-  async function handleStartProctoring(targetId = null) {
+  /*
+   * START SEQUENCE - the order below is deliberate and must not change:
+   *
+   *   1. SCREEN SHARE   - ask first, and require the whole screen.
+   *   2. CAMERA         - only asked once the screen is actually shared,
+   *                       so the candidate handles one browser permission
+   *                       prompt at a time instead of two at once.
+   *   3. FULLSCREEN     - entered before the question is revealed, so the
+   *                       test literally starts in fullscreen and the
+   *                       candidate never sees the question outside it.
+   *   4. START SESSION + REVEAL QUESTION.
+   *
+   * `reuseMedia` is used when moving between questions with Next/Previous:
+   * the screen share and camera are already running and fullscreen is
+   * already on, so we skip steps 1-3 entirely. Re-asking there would pop
+   * the permission dialogs again, and the permission dialog itself drops
+   * the browser out of fullscreen - which is exactly the bug where
+   * navigating between questions kicked the candidate out of fullscreen.
+   */
+  async function handleStartProctoring(targetId = null, options = {}) {
+    const { reuseMedia = false } = options;
+
     try {
       setResult(null);
 
-      const screenShared = await requestScreenShare();
-      if (!screenShared) {
-        setResult({
-          passed: false,
-          message: "Screen sharing is required to start the assessment.",
-        });
-        return;
+      if (!reuseMedia) {
+        // 1. Screen first.
+        const screenShared = await requestScreenShare();
+        if (!screenShared) {
+          setResult({
+            passed: false,
+            message: "Screen sharing is required to start the assessment.",
+          });
+          return;
+        }
+
+        // 2. Camera only after the screen is shared.
+        const webcamShared = await requestWebcam();
+        if (!webcamShared) {
+          setResult({
+            passed: false,
+            message:
+              "Camera access is required. Please turn your camera on to start the assessment.",
+          });
+          return;
+        }
+
+        // 3. Fullscreen before anything from the question is shown.
+        await enterFullscreen();
       }
 
-      const webcamShared = await requestWebcam();
-      if (!webcamShared) {
-        setResult({
-          passed: false,
-          message: "Webcam access is required to start the assessment.",
-        });
-        return;
-      }
-
+      // 4. Session + question.
       const session = await startAssessmentSession(targetId);
       sessionStorage.setItem("assessmentStarted", "true");
       setProctoringActive(true);
 
-      await enterFullscreen();
+      // Safety net: if we came through reuseMedia and something dropped
+      // fullscreen in the meantime, put it back before revealing.
+      if (!document.fullscreenElement) {
+        await enterFullscreen();
+      }
 
       await revealChallenge(session);
     } catch (error) {
@@ -508,7 +671,12 @@ useEffect(() => {
     if (!proctoringActive || !assessmentSession?.id) return;
 
    const handleFullscreenChange = () => {
-  const nowFullscreen = !!document.fullscreenElement;
+  const nowFullscreen = isEffectivelyFullscreen();
+
+  // Nothing actually changed (this fires on every resize tick too).
+  if (nowFullscreen === wasFullscreenRef.current) return;
+  wasFullscreenRef.current = nowFullscreen;
+
   setIsFullscreen(nowFullscreen);
   if (nowFullscreen) {
     setFullscreenHint(false);
@@ -527,7 +695,6 @@ useEffect(() => {
     const handleCopy = (e) => { e.preventDefault(); reportIntegrityEvent("copy"); };
     const handlePaste = (e) => { e.preventDefault(); reportIntegrityEvent("paste"); };
     const handleCut = (e) => { e.preventDefault(); reportIntegrityEvent("cut"); };
-    const handleContextMenu = (e) => { e.preventDefault(); reportIntegrityEvent("right_click"); };
 
     // Catches OS-level focus loss that visibilitychange misses: the Windows
     // Copilot key, Snap/split-screen, three-finger swipe to another app, etc.
@@ -545,55 +712,45 @@ useEffect(() => {
     // Copy/cut/paste via Ctrl+C/V/X are already caught above through the
     // browser's native copy/paste/cut events - preventDefault there also
     // blocks the shortcut itself, so nothing extra is needed for those.
-    // This handler covers what those three events don't: remembering an
-    // Escape press (so handleFullscreenChange can tell it apart from other
-    // fullscreen exits), blocking DevTools shortcuts, and a best-effort
-    // screenshot mitigation.
+    //
+    // DevTools shortcuts, the right-click "Inspect" menu, the console and
+    // screenshot keys are ALL handled by useExamGuard (see
+    // utils/examGuard.js), which is mounted further down. The only thing
+    // left for this handler is remembering an Escape press so
+    // handleFullscreenChange can tell an Esc exit (-3) apart from every
+    // other way of leaving fullscreen (-4).
     const handleKeyDown = (e) => {
       if (e.key === "Escape" || e.key === "Esc") {
         lastEscapeAtRef.current = Date.now();
-        return;
-      }
-
-      const key = e.key.toLowerCase();
-      const isDevToolsShortcut =
-        key === "f12" ||
-        ((e.ctrlKey || e.metaKey) && e.shiftKey && ["i", "j", "c"].includes(key)) ||
-        ((e.ctrlKey || e.metaKey) && key === "u");
-
-      if (isDevToolsShortcut) {
-        e.preventDefault();
-        reportIntegrityEvent("shortcut", { key: e.key, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey });
-        return;
-      }
-
-      if (key === "printscreen") {
-        // IMPORTANT LIMITATION: PrintScreen is captured by the OS before
-        // the browser (or any web page's JS) ever sees it, so this can
-        // NEVER actually stop a screenshot from being taken - there is no
-        // web API that can. All we can do is a best-effort cleanup: on
-        // Windows, PrtScn also copies the captured image to the clipboard,
-        // so we immediately try to overwrite the clipboard to blank it out.
-        // This does not touch the integrity score, per design - it's a
-        // "block if we can" measure, not a violation to penalize.
-        navigator.clipboard?.writeText("").catch(() => {});
       }
     };
 
+    /*
+     * Three listeners, one handler:
+     *  - fullscreenchange: the Fullscreen API's own event.
+     *  - resize: the ONLY signal a page gets when the user presses F11 /
+     *    uses the OS full-screen toggle, which fires no fullscreenchange.
+     *  - a slow poll: catches OS-level window changes that somehow emit
+     *    neither, so the "Fullscreen Required" screen can never become a
+     *    permanent dead end.
+     */
+    const fullscreenPoll = setInterval(handleFullscreenChange, 1000);
+
     document.addEventListener("fullscreenchange", handleFullscreenChange);
+    window.addEventListener("resize", handleFullscreenChange);
     document.addEventListener("copy", handleCopy, true);
     document.addEventListener("paste", handlePaste, true);
     document.addEventListener("cut", handleCut, true);
-    document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("blur", handleWindowBlur);
 
     return () => {
+      clearInterval(fullscreenPoll);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      window.removeEventListener("resize", handleFullscreenChange);
       document.removeEventListener("copy", handleCopy, true);
       document.removeEventListener("paste", handlePaste, true);
       document.removeEventListener("cut", handleCut, true);
-      document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("keydown", handleKeyDown, true);
       window.removeEventListener("blur", handleWindowBlur);
     };
@@ -611,6 +768,20 @@ useEffect(() => {
     }
     tabTokenRef.current = token;
   }, []);
+
+  /*
+   * Blocks the console, DevTools shortcuts, the right-click "Inspect" /
+   * "Inspect Console" menu, and screenshots for as long as proctoring is
+   * on. Screenshots are blocked but carry a 0-point penalty on purpose.
+   */
+  const handleGuardViolation = useCallback(
+    (type, metadata) => {
+      reportIntegrityEvent(type, metadata);
+    },
+    [assessmentSession?.id, challenge?.challengeId]
+  );
+
+  useExamGuard(proctoringActive && !!assessmentSession?.id, handleGuardViolation);
 
   // Cross-browser / multiple-tab blocking.
   // Every few seconds, tell the server "this tab is still the one being
@@ -641,11 +812,20 @@ useEffect(() => {
 
         if (data?.conflict) {
           setShowMultiSessionWarning(true);
-          if (typeof data.integrityScore === "number") {
-            setIntegrityScore((prev) => Math.min(prev, data.integrityScore));
+
+          // Same per-question rule as reportIntegrityEvent: only apply
+          // this to the question whose session the server actually hit.
+          const openChallengeId = challenge?.challengeId || challengeId || null;
+          const matchesOpenQuestion =
+            !data.challengeId || !openChallengeId || data.challengeId === openChallengeId;
+
+          if (matchesOpenQuestion && typeof data.integrityScore === "number") {
+            setIntegrityScore(data.integrityScore);
           }
-          if (data.lockedUntil) {
-            setAssessmentSession((prev) => (prev ? { ...prev, lockedUntil: data.lockedUntil } : prev));
+          if (matchesOpenQuestion) {
+            setAssessmentSession((prev) =>
+              prev ? { ...prev, lockedUntil: data.lockedUntil || null } : prev
+            );
           }
         }
       } catch (error) {
@@ -789,16 +969,25 @@ useEffect(() => {
       setResult(null);
       
       const wasProctoring = proctoringActive;
-      const hasActive = await checkActiveAssessment(nextChallenge.challengeId);
+      const hasActive = await checkActiveAssessment(nextChallenge.challengeId, {
+        isNavigation: true,
+      });
+
       if (hasActive) {
         setProctoringActive(true);
+        // Navigating must never drop fullscreen.
+        if (!document.fullscreenElement) await enterFullscreen();
+      } else if (wasProctoring) {
+        /*
+         * Still mid-assessment, just on a different question. Reuse the
+         * screen share / camera that are already running and stay in
+         * fullscreen - do NOT re-prompt for permissions here.
+         */
+        await handleStartProctoring(nextChallenge.challengeId, { reuseMedia: true });
+        if (!document.fullscreenElement) await enterFullscreen();
       } else {
-        if (wasProctoring) {
-          handleStartProctoring(nextChallenge.challengeId);
-        } else {
-          setProctoringActive(false);
-          setIsSwapped(false);
-        }
+        setProctoringActive(false);
+        setIsSwapped(false);
       }
     } catch (error) {
       console.error(`Failed to load ${direction} challenge:`, error);
@@ -894,9 +1083,7 @@ useEffect(() => {
       }));
 
  if (typeof data.integrityScore === "number") {
-  setIntegrityScore((prev) =>
-    Math.min(prev, data.integrityScore)
-  );
+  setIntegrityScore(data.integrityScore);
 }
 setProctoringActive(false);
 setIsScreenShared(false);
@@ -1126,20 +1313,40 @@ if (proctoringActive && !isFullscreen) {
         <p>You must stay in fullscreen to continue the assessment. Exiting fullscreen negatively impacts your integrity score.</p>
         {fullscreenHint && (
           <p style={{ color: "#fbbf24", fontSize: "14px", lineHeight: "1.5" }}>
-            This button isn't doing anything because your browser window is already
-            running in its own full-screen mode from before the test started (e.g. you
-            pressed <strong>F11</strong>, or your browser/OS was already maximized to
-            full-screen). Please exit that first — press <strong>F11</strong> again
-            (or your browser's full-screen shortcut) to shrink the window back down —
-            then click the button below.
+            Your browser is refusing the full-screen request. This usually means the
+            window is already in its own full-screen mode from before the test started
+            (for example you pressed <strong>F11</strong>). Press <strong>F11</strong>
+            again to leave it, then click the button below — or simply press
+            <strong> F11</strong> to go full-screen and this screen will clear by itself.
           </p>
         )}
         <button
           className="badge-start-btn"
           style={{ backgroundColor: "#ef4444" }}
-          onClick={enterFullscreen}
+          onClick={() => enterFullscreen()}
         >
           Resume Fullscreen
+        </button>
+
+        {/*
+          Escape hatch. The watcher already re-checks every second, but this
+          gives the candidate something to press so this screen can never
+          feel like a dead end.
+        */}
+        <button
+          className="nav-button"
+          style={{ marginTop: "12px" }}
+          onClick={() => {
+            if (isEffectivelyFullscreen()) {
+              wasFullscreenRef.current = true;
+              setIsFullscreen(true);
+              setFullscreenHint(false);
+            } else {
+              setFullscreenHint(true);
+            }
+          }}
+        >
+          I'm already in full-screen — continue
         </button>
       </div>
     </div>
@@ -1350,7 +1557,7 @@ if (proctoringActive && showMultiSessionWarning) {
 
           <button
             className="nav-button"
-            onClick={handleStartProctoring}
+            onClick={() => handleStartProctoring()}
             disabled={proctoringActive || isRunning || isNavigating}
           >
             {proctoringActive ? "🛡 Proctoring On" : "🛡 Start Proctoring"}
