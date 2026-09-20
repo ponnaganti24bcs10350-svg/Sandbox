@@ -10,10 +10,12 @@ import CompanySignup from "./pages/CompanySignup";
 import Profile from "./pages/Profile";
 import StudentInvitations from "./pages/StudentInvitations";
 import EmailVerification from "./pages/EmailVerification";
-
+import Instructions from "./pages/Instructions";
 
 function App() {
+  
   const [verificationData, setVerificationData] = useState(null);
+  const [assessmentReady, setAssessmentReady] = useState(false);
   const [page, setPage] = useState(() => {
     const token = localStorage.getItem("token");
 
@@ -48,6 +50,27 @@ function App() {
       ? JSON.parse(savedUser)
       : null;
   });
+    /* INITIAL BROWSER HISTORY */
+
+  useEffect(() => {
+    const currentState = {
+      sandbox: true,
+      page,
+      selectedChallenge,
+    };
+
+    window.history.replaceState(
+      currentState,
+      "",
+      window.location.href
+    );
+
+    window.history.pushState(
+      currentState,
+      "",
+      window.location.href
+    );
+  }, []);
 
   /* KEEP USER PROGRESS UPDATED */
 
@@ -73,50 +96,128 @@ function App() {
       );
     };
   }, []);
+ 
 
   /* NAVIGATION */
 
   function changePage(newPage) {
-    setPage(newPage);
-    setMenuOpen(false);
-  }
+  const newState = {
+    sandbox: true,
+    page: newPage,
+    selectedChallenge: null,
+  };
+
+  setPage(newPage);
+  setSelectedChallenge(null);
+  setMenuOpen(false);
+
+  window.history.pushState(
+    newState,
+    "",
+    window.location.href
+  );
+}
 
   /* LOGIN */
 
-  function handleLogin() {
-    const savedUser =
-      localStorage.getItem("user");
+function handleLogin() {
+  const savedUser =
+    localStorage.getItem("user");
 
-    if (savedUser) {
-      const loggedInUser =
-        JSON.parse(savedUser);
-
-      setUser(loggedInUser);
-      setSelectedChallenge(null);
-      setMenuOpen(false);
+  if (savedUser) {
+    const loggedInUser =
+      JSON.parse(savedUser);
 
       if (loggedInUser.role === "company") {
         setPage("company");
-      } else {
-        setPage("challenge");
       }
+    setUser(loggedInUser);
+    setSelectedChallenge(null);
+    setMenuOpen(false);
 
-      return;
-    }
+    const nextPage =
+      loggedInUser.role === "company"
+        ? "company"
+        : "challenge";
 
-    setPage("challenge");
+    setPage(nextPage);
+
+    window.history.pushState(
+      {
+        sandbox: true,
+        page: nextPage,
+        selectedChallenge: null,
+      },
+      "",
+      window.location.href
+    );
+
+    return;
   }
+
+  setPage("challenge");
+
+  window.history.pushState(
+    {
+      sandbox: true,
+      page: "challenge",
+      selectedChallenge: null,
+    },
+    "",
+    window.location.href
+  );
+}
 
   /* PRACTICE AGAIN */
 
-  function handlePractice(challengeId) {
-  setSelectedChallenge({
-    challengeId,
-  });
+function handlePractice(challengeId) {
+  const selected = {
+    challengeId: String(challengeId),
+  };
 
+  const newState = {
+    sandbox: true,
+    page: "challenge",
+    selectedChallenge: selected,
+  };
+
+  setSelectedChallenge(selected);
   setMenuOpen(false);
   setPage("challenge");
+
+  window.history.pushState(
+    newState,
+    "",
+    window.location.href
+  );
 }
+useEffect(() => {
+  function handlePopState(event) {
+    if (!event.state?.sandbox) {
+      return;
+    }
+
+    setPage(event.state.page || "challenge");
+
+    setSelectedChallenge(
+      event.state.selectedChallenge || null
+    );
+
+    setMenuOpen(false);
+  }
+
+  window.addEventListener(
+    "popstate",
+    handlePopState
+  );
+
+  return () => {
+    window.removeEventListener(
+      "popstate",
+      handlePopState
+    );
+  };
+}, []);
 
   /* LOGOUT */
 
@@ -126,6 +227,7 @@ function App() {
 
     setUser(null);
     setSelectedChallenge(null);
+    setAssessmentReady(false);
     setMenuOpen(false);
 
     setPage("login");
@@ -190,6 +292,17 @@ function App() {
         />
       )}
 
+      {/* ================= INSTRUCTIONS ================= */}
+
+      {page === "instructions" && (
+        <Instructions
+          onProceed={() => {
+            setPage("challenge");
+            setAssessmentReady(true);
+          }}
+        />
+      )}
+
       {/* ================= COMPANY DASHBOARD ================= */}
 
       {page === "company" && (
@@ -204,9 +317,9 @@ function App() {
       {page === "profile" && (
         <Profile
           user={user}
-          onBack={() =>
-            setPage("challenge")
-          }
+         onBack={() =>
+  changePage("challenge")
+}
         />
       )}
 
@@ -217,6 +330,7 @@ function App() {
         page !== "email-verification" &&
         page !== "company-signup" &&
         page !== "company" &&
+        page !== "instructions" &&
         page !== "profile" && (
           <>
             {/* ================= HEADER ================= */}
@@ -317,6 +431,12 @@ function App() {
                 selectedChallenge={
                   selectedChallenge
                 }
+                setSelectedChallenge={setSelectedChallenge}
+                onStartAssessment={() => {
+                  setAssessmentReady(false);
+                  setPage("instructions");
+                }}
+                assessmentReady={assessmentReady}
               />
             )}
 

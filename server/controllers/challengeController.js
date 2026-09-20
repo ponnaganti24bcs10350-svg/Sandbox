@@ -59,9 +59,9 @@ async function runChallenge(req, res) {
     if (challengeId === "1") {
       result = await testChallenge1(files);
     } else if (challengeId === "2") {
-      result = testChallenge2(files);
+      result = await testChallenge2(files);
     } else if (challengeId === "3") {
-      result = testChallenge3(files);
+      result = await testChallenge3(files);
     } else {
       return res.json({
         passed: false,
@@ -137,6 +137,8 @@ async function runChallenge(req, res) {
               },
 
               lastSolvedDate: today,
+
+              lastChallengeSolvedAt: new Date(),
 
               totalSolved: {
                 $add: ["$totalSolved", 1],
@@ -216,12 +218,18 @@ async function runChallenge(req, res) {
     // RESPONSE
     // ------------------------------------
 const candidateResult = {
-  passed: result.passed,
+  passed: result.passed,  
   testsPassed: result.testsPassed,
   totalTests: result.totalTests,
+
   message: result.passed
     ? "Challenge solved successfully."
-    : "Tests failed. Review your implementation and try again.",
+    : "Tests failed. Review the affected areas and investigate the relevant application flow.",
+
+  failureAreas:
+    !result.passed && Array.isArray(result.failureAreas)
+      ? result.failureAreas
+      : [],
 };
 
 return res.json({

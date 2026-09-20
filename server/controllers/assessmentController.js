@@ -192,6 +192,8 @@ const recordIntegrityEvent = async (req, res) => {
       "right_click",
       "shortcut",
       "multiple_session",
+      "screen_share_stopped",
+      "webcam_stopped",
     ];
 
     if (!allowedEvents.includes(type)) {
@@ -215,8 +217,8 @@ const recordIntegrityEvent = async (req, res) => {
     }
 
     const penalties = {
-      tab_switch: 5,
-      window_blur: 2,
+      tab_switch: 3,
+      window_blur: 0,
       fullscreen_exit: 5,
       copy: 5,
       paste: 5,
@@ -224,28 +226,49 @@ const recordIntegrityEvent = async (req, res) => {
       right_click: 2,
       shortcut: 3,
       multiple_session: 15,
+      screen_share_stopped: 10,
+      webcam_stopped: 10,
     };
 
     const penalty = penalties[type] || 0;
 
+    // Reduce integrity score
     session.integrityScore = Math.max(
       0,
       session.integrityScore - penalty
     );
 
+    // Record the event
     session.events.push({
       type,
       metadata: metadata || {},
     });
 
+    // Lock if integrity reaches 70 or below
+    let lockedUntil = null;
+
+    if (session.integrityScore <= 70) {
+      lockedUntil = new Date(
+        Date.now() + 1 * 60 * 60 * 1000
+      );
+
+      session.lockedUntil = lockedUntil;
+    }
+
+    // IMPORTANT:
+    // Always save the updated score and event
     await session.save();
 
     return res.json({
       success: true,
       integrityScore: session.integrityScore,
+      lockedUntil: session.lockedUntil || null,
     });
   } catch (error) {
-    console.error("Record integrity event error:", error);
+    console.error(
+      "Record integrity event error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -299,16 +322,37 @@ const submitAssessment = async (req, res) => {
 
 const getActiveAssessment = async (req, res) => {
   try {
-    const session = await AssessmentSession.findOne({
+    const { challengeId } = req.query;
+
+    let query = {
       candidate: req.user._id,
       status: "active",
-    }).sort({ createdAt: -1 });
+    };
+
+    if (challengeId) {
+      query.challenge = challengeId;
+    }
+
+    const session = await AssessmentSession.findOne(query)
+      .sort({ createdAt: -1 });
 
     if (!session) {
       return res.json({
         success: true,
         active: false,
       });
+    }
+
+    // If the 1-hour lock has expired,
+    // reset the integrity score and unlock the challenge.
+    if (
+      session.lockedUntil &&
+      new Date(session.lockedUntil) <= new Date()
+    ) {
+      session.integrityScore = 100;
+      session.lockedUntil = null;
+
+      await session.save();
     }
 
     return res.json({
@@ -320,10 +364,14 @@ const getActiveAssessment = async (req, res) => {
         startedAt: session.startedAt,
         integrityScore: session.integrityScore,
         status: session.status,
+        lockedUntil: session.lockedUntil,
       },
     });
   } catch (error) {
-    console.error("Get active assessment error:", error);
+    console.error(
+      "Get active assessment error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,

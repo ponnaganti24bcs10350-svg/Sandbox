@@ -50,6 +50,11 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
+    lastChallengeSolvedAt: {
+      type: Date,
+      default: null,
+    },
+
     totalSolved: {
       type: Number,
       default: 0,
@@ -79,6 +84,11 @@ const userSchema = new mongoose.Schema(
 
     avatar: {
       type: String,
+      default: null,
+    },
+
+    barredUntil: {
+      type: Date,
       default: null,
     },
   },
