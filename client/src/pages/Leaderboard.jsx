@@ -85,10 +85,10 @@ function Leaderboard() {
 
                   <div className="skill">
                     <div className="skill-label">
-                      <span>JavaScript</span>
+                      <span>MERN</span>
 
                       <span>
-                        {user.javascriptScore}%
+                        {user.mernScore}%
                       </span>
                     </div>
 
@@ -96,39 +96,10 @@ function Leaderboard() {
                       <div
                         className="progress"
                         style={{
-                          width: `${user.javascriptScore}%`,
+                          width: `${user.mernScore}%`,
                         }}
                       />
                     </div>
-                  </div>
-
-                  <div className="skill">
-                    <div className="skill-label">
-                      <span>React</span>
-
-                      <span>
-                        {user.reactScore}%
-                      </span>
-                    </div>
-
-                    <div className="progress-bar">
-                      <div
-                        className="progress"
-                        style={{
-                          width: `${user.reactScore}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="overall-score">
-                  <div className="score-number">
-                    {user.overallScore}
-                  </div>
-
-                  <div className="score-label">
-                    OVERALL SCORE
                   </div>
                 </div>
               </div>

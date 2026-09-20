@@ -436,16 +436,20 @@ async function testChallenge1(files) {
    * ------------------------------------------------------------
    */
 
-  let testsPassed = 0;
-  const failures = [];
+ let testsPassed = 0;
+const failures = [];
+const failureAreas = new Set();
 
-  function pass() {
-    testsPassed++;
-  }
+let currentArea = "General";
 
-  function fail(message) {
-    failures.push(message);
-  }
+function pass() {
+  testsPassed++;
+}
+
+function fail(message) {
+  failures.push(message);
+  failureAreas.add(currentArea);
+}
 
   function isObject(value) {
     return (
@@ -461,7 +465,7 @@ async function testChallenge1(files) {
    * Dynamic valid authentication
    * ============================================================
    */
-
+currentArea = "Authentication";
   try {
     const result = await executeMiddleware(validTokenOne);
 
@@ -486,7 +490,7 @@ async function testChallenge1(files) {
    * Invalid token rejected
    * ============================================================
    */
-
+currentArea = "Authentication";
   try {
     const result = await executeMiddleware(
       `invalid.${randomId()}`
@@ -510,7 +514,7 @@ async function testChallenge1(files) {
    * Missing authentication rejected
    * ============================================================
    */
-
+currentArea = "Authentication";
   try {
     const result = await executeMiddleware(null);
 
@@ -532,7 +536,7 @@ async function testChallenge1(files) {
    * Owner can read own profile
    * ============================================================
    */
-
+currentArea = "Profile access";
   try {
     resetCalls();
 
@@ -571,7 +575,7 @@ async function testChallenge1(files) {
    * Cross-user profile read blocked
    * ============================================================
    */
-
+currentArea = "Profile access";
   try {
     resetCalls();
 
@@ -607,7 +611,7 @@ async function testChallenge1(files) {
    * Cross-user profile read with different identity
    * ============================================================
    */
-
+currentArea = "Profile access";
   try {
     resetCalls();
 
@@ -643,7 +647,7 @@ async function testChallenge1(files) {
    * Sensitive password hash not exposed
    * ============================================================
    */
-
+currentArea = "Profile access";
   try {
     const result = await executeController(
       getUser,
@@ -686,7 +690,7 @@ async function testChallenge1(files) {
    * Owner can read activity
    * ============================================================
    */
-
+currentArea = "Activity access";
   try {
     resetCalls();
 
@@ -724,7 +728,7 @@ async function testChallenge1(files) {
    * Cross-user activity blocked
    * ============================================================
    */
-
+currentArea = "Activity access";
   try {
     resetCalls();
 
@@ -760,7 +764,7 @@ async function testChallenge1(files) {
    * Owner can update name
    * ============================================================
    */
-
+currentArea = "Profile updates";
   try {
     resetCalls();
 
@@ -805,7 +809,7 @@ async function testChallenge1(files) {
    * Owner can update email
    * ============================================================
    */
-
+currentArea = "Profile updates";
   try {
     resetCalls();
 
@@ -849,7 +853,7 @@ async function testChallenge1(files) {
    * Protected fields cannot be mass assigned
    * ============================================================
    */
-
+currentArea = "Profile updates";
   try {
     resetCalls();
 
@@ -913,7 +917,7 @@ async function testChallenge1(files) {
    * Cross-user update blocked before DB mutation
    * ============================================================
    */
-
+currentArea = "Profile updates";
   try {
     resetCalls();
 
@@ -961,7 +965,7 @@ async function testChallenge1(files) {
    * Cross-user update from another identity
    * ============================================================
    */
-
+currentArea = "Profile updates";
   try {
     resetCalls();
 
@@ -1009,7 +1013,7 @@ async function testChallenge1(files) {
    * Missing user returns 404
    * ============================================================
    */
-
+currentArea = "Resource handling";
   try {
     const missingId = randomId();
 
@@ -1040,7 +1044,7 @@ async function testChallenge1(files) {
    * Missing activity behaves safely
    * ============================================================
    */
-
+currentArea = "Resource handling";
   try {
     const missingId = randomId();
 
@@ -1077,7 +1081,7 @@ async function testChallenge1(files) {
    * Authentication must bind identity correctly
    * ============================================================
    */
-
+currentArea = "Authentication";
   try {
     const resultOne = await executeMiddleware(
       validTokenOne
@@ -1137,7 +1141,7 @@ async function testChallenge1(files) {
    * The candidate must have test definitions covering the
    * security behavior.
    */
-
+currentArea = "Regression coverage";
   try {
     const regressionSource =
       files["tests/existing.test.js"];
@@ -1201,15 +1205,16 @@ async function testChallenge1(files) {
    * ------------------------------------------------------------
    */
 
-  return {
-    passed: testsPassed === 18,
-    testsPassed,
-    totalTests: 18,
-    message:
-      testsPassed === 18
-        ? "Account takeover protections verified."
-        : failures.join(" "),
-  };
+return {
+  passed: testsPassed === 18,
+  testsPassed,
+  totalTests: 18,
+  failureAreas: [...failureAreas],
+  message:
+    testsPassed === 18
+      ? "Account takeover protections verified."
+      : "Tests failed. Review the affected areas and investigate the relevant application flow.",
+};
 }
 
 module.exports = testChallenge1;
