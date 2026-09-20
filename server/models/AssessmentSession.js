@@ -46,6 +46,7 @@ const assessmentSessionSchema = new mongoose.Schema(
           enum: [
             "tab_switch",
             "fullscreen_exit",
+            "fullscreen_exit_esc",
             "copy",
             "paste",
             "cut",
@@ -55,6 +56,7 @@ const assessmentSessionSchema = new mongoose.Schema(
             "multiple_session",
             "screen_share_stopped",
             "webcam_stopped",
+            "suspicious_extension",
           ],
         },
 

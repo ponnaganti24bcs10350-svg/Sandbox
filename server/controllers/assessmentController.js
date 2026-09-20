@@ -1,6 +1,50 @@
 const AssessmentSession = require("../models/AssessmentSession");
 const User = require("../models/User");
 const challenges = require("../challenges/challenges");
+
+/*
+ * ---------------------------------------------------------------
+ * INTEGRITY PENALTY TABLE (single source of truth)
+ * ---------------------------------------------------------------
+ * These values are intentionally kept in ONE place so the server,
+ * and the Instructions page shown to the candidate, can never drift
+ * apart. If you change a number here, change it in
+ * client/src/pages/Instructions.jsx too.
+ *
+ * A penalty of 0 means: the action is BLOCKED / logged, but the
+ * candidate is NOT penalised for it (screenshots work this way -
+ * we stop what we can and record the attempt, but take no points).
+ */
+const INTEGRITY_PENALTIES = {
+  // Leaving the test
+  tab_switch: 5,            // switching tab
+  window_blur: 5,           // switching browser / app
+  fullscreen_exit: 4,       // leaving fullscreen any way other than Esc
+  fullscreen_exit_esc: 3,   // leaving fullscreen with the Esc key
+
+  // Clipboard (Ctrl/Cmd + C / V / X)
+  copy: 3,
+  paste: 3,
+  cut: 3,
+
+  // Dev tools / inspecting
+  right_click: 2,
+  shortcut: 3,              // F12, Ctrl+Shift+I/J/C/K, Ctrl+U, ...
+
+  // Streams & multi-session
+  multiple_session: 15,
+  screen_share_stopped: 10,
+  webcam_stopped: 10,
+  suspicious_extension: 8,
+
+  // Blocked but NOT penalised
+  screenshot_attempt: 0,
+};
+
+// Integrity at or below this value locks THAT question (and only that
+// question) for the duration below.
+const LOCK_THRESHOLD = 70;
+const LOCK_DURATION_MS = 1 * 60 * 60 * 1000; // 1 hour
 const getAssessmentChallenge = async (req, res) => {
   try {
     const { id } = req.params;
@@ -125,6 +169,14 @@ const startAssessment = async (req, res) => {
      * Start assessment.
      *
      * NO TIMER.
+     *
+     * Integrity score is per-question, not shared across the whole
+     * attempt. A brand new question always starts at 100. Re-entering a
+     * question that already has an active (unsubmitted) session is
+     * handled above (the 409 branch) and returns that session as-is, so
+     * whatever score it had (e.g. 90) is preserved when the candidate
+     * comes back to it later - it is NOT reset, and it is NOT affected
+     * by what happened on other questions.
      */
     const startedAt = new Date();
 
@@ -153,7 +205,8 @@ const startAssessment = async (req, res) => {
   challengeId: session.challenge,
   startedAt: session.startedAt,
   integrityScore: session.integrityScore,
-  status: session.status
+  status: session.status,
+  lockedUntil: session.lockedUntil || null,
 },
     });
   } catch (error) {
@@ -182,19 +235,7 @@ const recordIntegrityEvent = async (req, res) => {
     const { id } = req.params;
     const { type, metadata } = req.body;
 
-    const allowedEvents = [
-      "tab_switch",
-      "window_blur",
-      "fullscreen_exit",
-      "copy",
-      "paste",
-      "cut",
-      "right_click",
-      "shortcut",
-      "multiple_session",
-      "screen_share_stopped",
-      "webcam_stopped",
-    ];
+    const allowedEvents = Object.keys(INTEGRITY_PENALTIES);
 
     if (!allowedEvents.includes(type)) {
       return res.status(400).json({
@@ -216,23 +257,36 @@ const recordIntegrityEvent = async (req, res) => {
       });
     }
 
-    const penalties = {
-      tab_switch: 3,
-      window_blur: 0,
-      fullscreen_exit: 5,
-      copy: 5,
-      paste: 5,
-      cut: 5,
-      right_click: 2,
-      shortcut: 3,
-      multiple_session: 15,
-      screen_share_stopped: 10,
-      webcam_stopped: 10,
-    };
+    /*
+     * PER-QUESTION ISOLATION:
+     *
+     * This session belongs to exactly ONE challenge (session.challenge).
+     * Everything below - the score, the events, the lock - is stored on
+     * this document only, so a violation here can never touch any other
+     * question's session or score.
+     */
 
-    const penalty = penalties[type] || 0;
+    // If THIS question is already locked, stop deducting. The candidate
+    // can't interact with it anyway, and further events would otherwise
+    // keep draining a score that is already being reset when the lock
+    // expires.
+    const alreadyLocked =
+      session.lockedUntil &&
+      new Date(session.lockedUntil) > new Date();
 
-    // Reduce integrity score
+    if (alreadyLocked) {
+      return res.json({
+        success: true,
+        challengeId: session.challenge,
+        integrityScore: session.integrityScore,
+        lockedUntil: session.lockedUntil,
+        locked: true,
+      });
+    }
+
+    const penalty = INTEGRITY_PENALTIES[type] || 0;
+
+    // Reduce integrity score (penalty 0 events are logged only)
     session.integrityScore = Math.max(
       0,
       session.integrityScore - penalty
@@ -244,15 +298,11 @@ const recordIntegrityEvent = async (req, res) => {
       metadata: metadata || {},
     });
 
-    // Lock if integrity reaches 70 or below
-    let lockedUntil = null;
-
-    if (session.integrityScore <= 70) {
-      lockedUntil = new Date(
-        Date.now() + 1 * 60 * 60 * 1000
+    // Lock ONLY this question if its integrity reaches the threshold
+    if (session.integrityScore <= LOCK_THRESHOLD) {
+      session.lockedUntil = new Date(
+        Date.now() + LOCK_DURATION_MS
       );
-
-      session.lockedUntil = lockedUntil;
     }
 
     // IMPORTANT:
@@ -261,8 +311,11 @@ const recordIntegrityEvent = async (req, res) => {
 
     return res.json({
       success: true,
+      challengeId: session.challenge,
+      penalty,
       integrityScore: session.integrityScore,
       lockedUntil: session.lockedUntil || null,
+      locked: !!session.lockedUntil,
     });
   } catch (error) {
     console.error(
@@ -316,6 +369,102 @@ const submitAssessment = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to submit assessment",
+    });
+  }
+};
+
+// A tab is considered "gone" (closed/crashed/asleep) if we haven't heard
+// from it in this long - after that, a new tab can take over ownership
+// without being treated as a conflict.
+const TAB_HEARTBEAT_STALE_MS = 15 * 1000;
+
+const heartbeat = async (req, res) => {
+  try {
+    const { tabToken, sessionId } = req.body;
+
+    if (!tabToken) {
+      return res.status(400).json({
+        success: false,
+        message: "tabToken is required",
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const now = Date.now();
+    const ownerToken = user.activeTabToken;
+    const ownerAge = user.activeTabHeartbeatAt
+      ? now - new Date(user.activeTabHeartbeatAt).getTime()
+      : Infinity;
+
+    const conflict =
+      ownerToken &&
+      ownerToken !== tabToken &&
+      ownerAge < TAB_HEARTBEAT_STALE_MS;
+
+    if (conflict) {
+      // Someone else (same browser, second tab, or a completely different
+      // browser) is actively using this account right now. Penalize the
+      // session that's currently open in THIS tab, if we have one.
+      if (sessionId) {
+        const session = await AssessmentSession.findOne({
+          _id: sessionId,
+          candidate: req.user._id,
+          status: "active",
+        });
+
+        if (session) {
+          const alreadyLocked =
+            session.lockedUntil &&
+            new Date(session.lockedUntil) > new Date();
+
+          if (!alreadyLocked) {
+            session.integrityScore = Math.max(
+              0,
+              session.integrityScore - INTEGRITY_PENALTIES.multiple_session
+            );
+            session.events.push({
+              type: "multiple_session",
+              metadata: { tabToken },
+            });
+
+            if (session.integrityScore <= LOCK_THRESHOLD) {
+              session.lockedUntil = new Date(Date.now() + LOCK_DURATION_MS);
+            }
+
+            await session.save();
+          }
+
+          return res.json({
+            success: true,
+            conflict: true,
+            challengeId: session.challenge,
+            integrityScore: session.integrityScore,
+            lockedUntil: session.lockedUntil || null,
+          });
+        }
+      }
+
+      return res.json({ success: true, conflict: true });
+    }
+
+    // No conflict - this tab is (or becomes) the owner.
+    user.activeTabToken = tabToken;
+    user.activeTabHeartbeatAt = new Date();
+    await user.save();
+
+    return res.json({ success: true, conflict: false });
+  } catch (error) {
+    console.error("Heartbeat error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to record heartbeat",
     });
   }
 };
@@ -385,4 +534,7 @@ module.exports = {
   submitAssessment,
    getAssessmentChallenge,
    getActiveAssessment,
+   heartbeat,
+   INTEGRITY_PENALTIES,
+   LOCK_THRESHOLD,
 };

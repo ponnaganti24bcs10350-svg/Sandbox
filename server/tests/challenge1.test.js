@@ -436,20 +436,20 @@ async function testChallenge1(files) {
    * ------------------------------------------------------------
    */
 
- let testsPassed = 0;
-const failures = [];
-const failureAreas = new Set();
+  let testsPassed = 0;
+  const failures = [];
+  const failureAreas = new Set();
 
-let currentArea = "General";
+  let currentArea = "General";
 
-function pass() {
-  testsPassed++;
-}
+  function pass() {
+    testsPassed++;
+  }
 
-function fail(message) {
-  failures.push(message);
-  failureAreas.add(currentArea);
-}
+  function fail(message) {
+    failures.push(message);
+    failureAreas.add(currentArea);
+  }
 
   function isObject(value) {
     return (
@@ -465,7 +465,6 @@ function fail(message) {
    * Dynamic valid authentication
    * ============================================================
    */
-currentArea = "Authentication";
   try {
     const result = await executeMiddleware(validTokenOne);
 
@@ -1205,16 +1204,16 @@ currentArea = "Regression coverage";
    * ------------------------------------------------------------
    */
 
-return {
-  passed: testsPassed === 18,
-  testsPassed,
-  totalTests: 18,
-  failureAreas: [...failureAreas],
-  message:
-    testsPassed === 18
-      ? "Account takeover protections verified."
-      : "Tests failed. Review the affected areas and investigate the relevant application flow.",
-};
+  return {
+    passed: testsPassed === 18,
+    testsPassed,
+    totalTests: 18,
+    failureAreas: [...failureAreas],
+    message:
+      testsPassed === 18
+        ? "Account takeover protections verified."
+        : "Tests failed. Review the affected areas and investigate the relevant application flow.",
+  };
 }
 
 module.exports = testChallenge1;

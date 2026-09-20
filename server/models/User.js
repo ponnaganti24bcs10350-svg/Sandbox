@@ -60,6 +60,24 @@ const userSchema = new mongoose.Schema(
       default: 0,
     },
 
+    /*
+     * Single-active-tab enforcement.
+     *
+     * Whichever browser tab/window last sent a heartbeat "owns" the
+     * active assessment. If a second tab (same browser or a different
+     * browser entirely, e.g. Chrome + Firefox) sends a heartbeat while
+     * the owner's heartbeat is still recent, that's a concurrent
+     * session and gets flagged as a "multiple_session" integrity event.
+     */
+    activeTabToken: {
+      type: String,
+      default: null,
+    },
+
+    activeTabHeartbeatAt: {
+      type: Date,
+      default: null,
+    },
     // Challenges solved by this user
     solvedChallenges: {
       type: [String],

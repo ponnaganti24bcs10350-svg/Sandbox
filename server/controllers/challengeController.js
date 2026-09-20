@@ -218,7 +218,7 @@ async function runChallenge(req, res) {
     // RESPONSE
     // ------------------------------------
 const candidateResult = {
-  passed: result.passed,  
+  passed: result.passed,
   testsPassed: result.testsPassed,
   totalTests: result.totalTests,
 

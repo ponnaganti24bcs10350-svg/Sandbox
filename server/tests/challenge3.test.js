@@ -203,18 +203,17 @@ async function testChallenge3(files) {
   }
 
   let passed = 0;
+  const failureAreas = new Set();
 
-const failureAreas = new Set();
+  let currentArea = "General";
 
-let currentArea = "General";
-
-const check = (condition) => {
-  if (condition) {
-    passed++;
-  } else {
-    failureAreas.add(currentArea);
-  }
-};
+  const check = (condition) => {
+    if (condition) {
+      passed++;
+    } else {
+      failureAreas.add(currentArea);
+    }
+  };
   async function runAuth(token) {
     const req = { headers: token ? { authorization: `Bearer ${token}` } : {} };
     const res = response();
@@ -288,7 +287,7 @@ currentArea = "Data integrity & error handling";
   check(/try\s*\{|catch\s*\(/.test(files["server/controllers/authController.js"]) || /try\s*\{|catch\s*\(/.test(files["server/controllers/postController.js"]));
   currentArea = "Route protection";
   check(/protect|auth|authenticate/.test(files["server/routes/postRoutes.js"]));
-currentArea = "Regression coverage";
+  currentArea = "Regression coverage";
   const regression = files["tests/existing.test.js"];
   const testCount = (regression.match(/\b(?:test|it)\s*\(/g) || []).length;
   const assertionCount = (regression.match(/\b(?:expect|assert|strictEqual|deepStrictEqual|toBe|toEqual|toThrow|rejects|resolves)\b/g) || []).length;

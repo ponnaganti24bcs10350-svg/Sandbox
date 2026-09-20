@@ -34,14 +34,14 @@ You are not told which endpoint or file is responsible.
       "Do not rewrite the application.",
       "Make focused changes based on your investigation.",
     ],
-    projectOverview: {
-  application: `
+       projectOverview: {
+      application: `
 This challenge is based on a backend API for a social platform.
 Authenticated users can view profiles, view activity, and update
 their own profile information.
 `,
 
-  architecture: `
+      architecture: `
 Client
   ↓
 Express Router
@@ -55,7 +55,7 @@ MongoDB Models
 Database
 `,
 
-  requestFlow: `
+      requestFlow: `
 HTTP Request
   ↓
 userRoutes.js
@@ -71,7 +71,7 @@ MongoDB
 JSON Response
 `,
 
-  projectStructure: `
+      projectStructure: `
 server/
 ├── middleware/
 │   └── auth.js
@@ -92,7 +92,7 @@ server/
     └── existing.test.js
 `,
 
-  responsibilities: `
+      responsibilities: `
 auth.js
 Handles authentication for incoming requests.
 
@@ -123,7 +123,7 @@ Contains existing application behaviour that should
 continue working after your changes.
 `,
 
-  investigationGuide: `
+      investigationGuide: `
 Start by understanding how a request moves through the application.
 
 Trace the flow from:
@@ -140,7 +140,7 @@ to understand the expected and actual behaviour.
 You are not told which file contains the problem.
 Determine the root cause through your investigation.
 `
-},
+    },
 
     files: {
       "server/middleware/auth.js": `

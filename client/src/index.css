@@ -356,8 +356,8 @@ body {
 ========================= */
 
 .challenge-panel {
+  /* width is now controlled inline via React state (panelWidth) so it can be resized */
   width: 280px;
-  min-width: 280px;
 
   background: #1e1e1e;
 
@@ -369,6 +369,25 @@ body {
   overflow-x: hidden;
 
   flex-shrink: 0;
+}
+
+/* =========================
+   QUESTION / CODE SPLIT HANDLE
+========================= */
+
+.panel-resize-handle {
+  width: 5px;
+  min-width: 5px;
+
+  background: #3c3c3c;
+
+  cursor: ew-resize;
+
+  flex-shrink: 0;
+}
+
+.panel-resize-handle:hover {
+  background: #007acc;
 }
 
 .challenge-panel h2 {
