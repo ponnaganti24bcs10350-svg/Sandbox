@@ -32,9 +32,9 @@ const INTEGRITY_PENALTIES = {
   shortcut: 3,              // F12, Ctrl+Shift+I/J/C/K, Ctrl+U, ...
 
   // Streams & multi-session
-  multiple_session: 15,
-  screen_share_stopped: 10,
-  webcam_stopped: 10,
+  multiple_session: 10,
+  screen_share_stopped: 5,
+  webcam_stopped: 5,
   suspicious_extension: 8,
 
   // Blocked but NOT penalised

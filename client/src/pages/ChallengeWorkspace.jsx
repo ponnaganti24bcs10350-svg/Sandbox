@@ -4,7 +4,7 @@ import FileExplorer from "../components/FileExplorer";
 import CodeEditor from "../components/CodeEditor";
 import TestResults from "../components/TestResults";
 import { getApiUrl } from "../config/api";
-import { useExamGuard, isDevToolsShortcut, isScreenshotShortcut } from "../utils/examGuard";
+import { useExamGuard, isDevToolsShortcut, isScreenshotShortcut, screenshotState } from "../utils/examGuard";
 
 const API_URL = getApiUrl();
 
@@ -703,6 +703,7 @@ useEffect(() => {
     let lastBlurAt = 0;
     const handleWindowBlur = () => {
       if (document.hidden) return; // already covered by tab_switch
+      if (Date.now() - screenshotState.at < 3000) return; // snipping overlay, not a penalty
       const now = Date.now();
       if (now - lastBlurAt < 1500) return; // debounce rapid refocus/blur churn
       lastBlurAt = now;
@@ -1586,7 +1587,7 @@ if (proctoringActive && showMultiSessionWarning) {
             onClick={handleRun}
             disabled={!proctoringActive || isRunning || isNavigating}
           >
-            {isRunning ? "Running..." : "▶ Run"}
+            {isRunning ? "Running..." : "▶️ Run"}
           </button>
 
           <button

@@ -116,14 +116,14 @@ export default function Instructions({ onProceed }) {
                   <td>
                     <span className="hr-badge critical">Stop Screen Share / Camera</span>
                   </td>
-                  <td>-10 points</td>
+                  <td>-5 points</td>
                   <td>Revoking screen sharing or camera access permissions.</td>
                 </tr>
                 <tr>
                   <td>
                     <span className="hr-badge critical">Multiple Sessions</span>
                   </td>
-                  <td>-15 points</td>
+                  <td>-10 points</td>
                   <td>Using the same account in a second tab or a second browser at the same time.</td>
                 </tr>
                 <tr>

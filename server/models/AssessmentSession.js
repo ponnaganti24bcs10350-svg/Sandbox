@@ -57,6 +57,7 @@ const assessmentSessionSchema = new mongoose.Schema(
             "screen_share_stopped",
             "webcam_stopped",
             "suspicious_extension",
+            "screenshot_attempt",
           ],
         },
 

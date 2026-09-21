@@ -26,14 +26,20 @@ export function isDevToolsShortcut(e) {
   return false;
 }
 
+// Time of the last screenshot key press. The workspace reads this so the
+// window-blur caused by the snipping overlay is not penalised.
+export const screenshotState = { at: 0 };
+
 export function isScreenshotShortcut(e) {
   const key = (e.key || "").toLowerCase();
 
   // Windows PrintScreen (and Alt+PrtScn), Win+Shift+S snipping tool,
   // macOS Cmd+Shift+3 / 4 / 5.
   if (key === "printscreen") return true;
-  if (e.shiftKey && (e.metaKey || e.key === "Meta") && key === "s") return true;
-  if (e.metaKey && e.shiftKey && ["3", "4", "5"].includes(key)) return true;
+  // e.code (physical key) is used because with Shift held e.key becomes
+  // "#", "$", "%" or "S", so the old e.key check never matched on Mac.
+  if (e.shiftKey && e.metaKey && (key === "s" || e.code === "KeyS")) return true;
+  if (e.metaKey && e.shiftKey && ["Digit3", "Digit4", "Digit5"].includes(e.code)) return true;
 
   return false;
 }
@@ -104,6 +110,7 @@ export function useExamGuard(enabled, onViolation) {
     let lastScreenshotAt = 0;
     const reportScreenshot = (e) => {
       const now = Date.now();
+      screenshotState.at = now;
       if (now - lastScreenshotAt < 800) return;
       lastScreenshotAt = now;
       onViolation?.("screenshot_attempt", { key: e.key });
