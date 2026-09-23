@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { getApiUrl } from "../config/api";
 
 export default function EmailVerification({
@@ -14,15 +14,8 @@ export default function EmailVerification({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [sent, setSent] = useState(false);
 
   const API_URL = getApiUrl();
-
-  useEffect(() => {
-    if (email && !sent) {
-      handleSendCode();
-    }
-  }, [email]);
 
   async function handleSendCode() {
     setError("");
@@ -41,7 +34,6 @@ export default function EmailVerification({
         throw new Error(data.message || "Failed to send verification code");
       }
 
-      setSent(true);
       setMessage(data.message || `Verification code sent to ${email}`);
     } catch (err) {
       console.error(err);

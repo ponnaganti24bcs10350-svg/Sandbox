@@ -6,6 +6,7 @@ const {
   submitAssessment,
   getAssessmentChallenge,
   getActiveAssessment,
+  heartbeat,
 } = require("../controllers/assessmentController");
 
 const {
@@ -43,6 +44,12 @@ router.get(
   protect,
   restrictTo("student"),
   getActiveAssessment
+);
+router.post(
+  "/heartbeat",
+  protect,
+  restrictTo("student"),
+  heartbeat
 );
 router.get(
   "/:id/challenge",

@@ -27,7 +27,34 @@ function TestResults({ result, isRunning }) {
         </p>
       )}
 
-      <p>{result.message}</p>
+      {result.passed ? (
+        <p>{result.message}</p>
+      ) : (
+        <>
+          <p>
+            Your implementation does not yet satisfy all required
+            behaviours.
+          </p>
+
+          {result.failureAreas?.length > 0 && (
+            <div className="failure-areas">
+              <h4>Areas that need investigation</h4>
+
+              <ul>
+                {result.failureAreas.map((area) => (
+                  <li key={area}>
+                    <strong>❌ {area}</strong>
+                    <span>
+                      Some behaviours in this area are not currently
+                      satisfied.
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

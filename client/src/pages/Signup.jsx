@@ -2,6 +2,9 @@ import { useState } from "react";
 import { getApiUrl } from "../config/api";
 
 
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../config/firebase";
+
 function Signup({ onLogin, onSignIn, onRequireVerification }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -82,87 +85,19 @@ function Signup({ onLogin, onSignIn, onRequireVerification }) {
     }
   }
 
-  function handleGoogleSignIn() {
-    const clientId =
-      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-      "460149458220-h6hbupud5bp56ptat1q3i1am0b2cdfjj.apps.googleusercontent.com";
-
-    if (!window.google) {
-      console.error("Google Identity Services script (window.google) not loaded");
-      setError(
-        "Google Sign-In library failed to load. Please disable ad-blockers or refresh the page."
-      );
-      return;
-    }
-
-    if (window.google.accounts?.oauth2 && clientId) {
-      try {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: "email profile openid",
-          callback: async (tokenResponse) => {
-            if (tokenResponse?.error) {
-              console.error("Google OAuth token error:", tokenResponse.error);
-              setError(`Google Sign-In failed: ${tokenResponse.error}`);
-              return;
-            }
-            if (tokenResponse?.access_token) {
-              setLoading(true);
-              try {
-                const res = await fetch(
-                  "https://www.googleapis.com/oauth2/v3/userinfo",
-                  {
-                    headers: {
-                      Authorization: `Bearer ${tokenResponse.access_token}`,
-                    },
-                  }
-                );
-                const googleUser = await res.json();
-                handleGoogleAuthResponse({
-                  email: googleUser.email,
-                  name: googleUser.name,
-                  picture: googleUser.picture,
-                  googleId: googleUser.sub,
-                });
-              } catch (err) {
-                console.error("Failed to fetch Google user profile:", err);
-                setError("Failed to retrieve Google account info");
-                setLoading(false);
-              }
-            }
-          },
-          error_callback: (err) => {
-            console.error("Google OAuth popup error:", err);
-            setError("Google popup was closed or blocked by browser.");
-          },
-        });
-        client.requestAccessToken({ prompt: "select_account" });
-        return;
-      } catch (e) {
-        console.error("Google initTokenClient error:", e);
-      }
-    }
-
-    if (window.google.accounts?.id && clientId) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: (response) => {
-            handleGoogleAuthResponse({ credential: response.credential });
-          },
-        });
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed()) {
-            console.warn("One Tap not displayed:", notification.getNotDisplayedReason());
-            setError(
-              `Google Sign-In prompt not displayed (${notification.getNotDisplayedReason()}). Please try again.`
-            );
-          }
-        });
-      } catch (e) {
-        console.error("Google accounts.id prompt error:", e);
-        setError("Failed to open Google Sign-In prompt.");
-      }
+  async function handleGoogleSignIn() {
+    try {
+      setLoading(true);
+      setError("");
+      
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      
+      handleGoogleAuthResponse({ credential: idToken });
+    } catch (error) {
+      console.error("Firebase Google Auth Error:", error);
+      setError("Google popup was closed or authentication failed.");
+      setLoading(false);
     }
   }
 
