@@ -1,9 +1,7 @@
-const challenges = require("../challenges/challenges");
+const { getChallengeById } = require("../challenges/catalog");
+const { getChallengeRunner } = require("../challenges/runners");
 const User = require("../models/User");
 const AssessmentSession = require("../models/AssessmentSession");
-const testChallenge1 = require("../tests/challenge1.test");
-const testChallenge2 = require("../tests/challenge2.test");
-const testChallenge3 = require("../tests/challenge3.test");
 
 async function runChallenge(req, res) {
   try {
@@ -39,9 +37,7 @@ async function runChallenge(req, res) {
     // FIND CHALLENGE
     // ------------------------------------
 
-    const challenge = challenges.find(
-      (item) => item.challengeId === challengeId
-    );
+    const challenge = getChallengeById(challengeId);
 
     if (!challenge) {
       return res.status(404).json({
@@ -54,15 +50,9 @@ async function runChallenge(req, res) {
     // RUN TESTS
     // ------------------------------------
 
-    let result;
+    const runner = getChallengeRunner(challengeId);
 
-    if (challengeId === "1") {
-      result = await testChallenge1(files);
-    } else if (challengeId === "2") {
-      result = await testChallenge2(files);
-    } else if (challengeId === "3") {
-      result = await testChallenge3(files);
-    } else {
+    if (!runner) {
       return res.json({
         passed: false,
         testsPassed: 0,
@@ -70,6 +60,8 @@ async function runChallenge(req, res) {
         message: "Tests for this challenge are not available yet.",
       });
     }
+
+    const result = await runner(files);
 
     let newlySolved = false;
     let updatedUser = null;
@@ -82,12 +74,7 @@ async function runChallenge(req, res) {
       const today = User.todayIST();
       const dailyLimit = User.DAILY_LIMIT;
 
-      const scoreIncrease =
-        challengeId === "1" ||
-        challengeId === "2" ||
-        challengeId === "3"
-          ? 5
-          : 0;
+      const scoreIncrease = 5;
 
       // ------------------------------------
       // ATOMIC SOLVE UPDATE

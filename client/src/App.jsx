@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 
 import CompanyDashboard from "./pages/CompanyDashboard";
 import ChallengeWorkspace from "./pages/ChallengeWorkspace";
+import ChallengeCatalog from "./pages/ChallengeCatalog";
 import Leaderboard from "./pages/Leaderboard";
 import PracticedChallenges from "./pages/PracticedChallenges";
 import Login from "./pages/Login";
@@ -13,6 +15,11 @@ import StudentInvitations from "./pages/StudentInvitations";
 import EmailVerification from "./pages/EmailVerification";
 import Instructions from "./pages/Instructions";
 import { useBlockAIOverlays } from "./utils/aiOverlayBlocker";
+import {
+  challengeIdFromPath,
+  pageFromPath,
+  routes,
+} from "./app/routes";
 
 function App() {
   // This hook already existed in utils/aiOverlayBlocker.js but was never
@@ -20,10 +27,15 @@ function App() {
   // on every page (including the company dashboard), which is what
   // watches for/removes injected ChatGPT/Gemini/Copilot/etc. overlay UI.
   useBlockAIOverlays();
+  const location = useLocation();
+  const navigate = useNavigate();
   
   const [verificationData, setVerificationData] = useState(null);
   const [assessmentReady, setAssessmentReady] = useState(false);
   const [page, setPage] = useState(() => {
+    const routedPage = pageFromPath(window.location.pathname);
+    if (routedPage !== "login") return routedPage;
+
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -46,8 +58,10 @@ function App() {
 
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const [selectedChallenge, setSelectedChallenge] =
-    useState(null);
+  const [selectedChallenge, setSelectedChallenge] = useState(() => {
+    const challengeId = challengeIdFromPath(window.location.pathname);
+    return challengeId ? { challengeId } : null;
+  });
 
   const [user, setUser] = useState(() => {
     const savedUser =
@@ -57,27 +71,11 @@ function App() {
       ? JSON.parse(savedUser)
       : null;
   });
-    /* INITIAL BROWSER HISTORY */
-
   useEffect(() => {
-    const currentState = {
-      sandbox: true,
-      page,
-      selectedChallenge,
-    };
-
-    window.history.replaceState(
-      currentState,
-      "",
-      window.location.href
-    );
-
-    window.history.pushState(
-      currentState,
-      "",
-      window.location.href
-    );
-  }, []);
+    setPage(pageFromPath(location.pathname));
+    const challengeId = challengeIdFromPath(location.pathname);
+    setSelectedChallenge(challengeId ? { challengeId } : null);
+  }, [location.pathname]);
 
   /* KEEP USER PROGRESS UPDATED */
 
@@ -108,22 +106,25 @@ function App() {
   /* NAVIGATION */
 
   function changePage(newPage) {
-  const newState = {
-    sandbox: true,
-    page: newPage,
-    selectedChallenge: null,
-  };
+    const pathByPage = {
+      challenge: routes.challenge,
+      catalog: routes.catalog,
+      leaderboard: routes.leaderboard,
+      practiced: routes.practiced,
+      invitations: routes.invitations,
+      profile: routes.profile,
+      company: routes.company,
+      login: routes.login,
+      signup: routes.signup,
+      "company-signup": routes.companySignup,
+      "email-verification": routes.verification,
+      instructions: routes.instructions,
+    };
 
-  setPage(newPage);
-  setSelectedChallenge(null);
-  setMenuOpen(false);
-
-  window.history.pushState(
-    newState,
-    "",
-    window.location.href
-  );
-}
+    setSelectedChallenge(null);
+    setMenuOpen(false);
+    navigate(pathByPage[newPage] || routes.login);
+  }
 
   /* LOGIN */
 
@@ -136,7 +137,7 @@ function handleLogin() {
       JSON.parse(savedUser);
 
       if (loggedInUser.role === "company") {
-        setPage("company");
+        navigate(routes.company);
       }
     setUser(loggedInUser);
     setSelectedChallenge(null);
@@ -147,32 +148,12 @@ function handleLogin() {
         ? "company"
         : "challenge";
 
-    setPage(nextPage);
-
-    window.history.pushState(
-      {
-        sandbox: true,
-        page: nextPage,
-        selectedChallenge: null,
-      },
-      "",
-      window.location.href
-    );
+    navigate(nextPage === "company" ? routes.company : routes.challenge);
 
     return;
   }
 
-  setPage("challenge");
-
-  window.history.pushState(
-    {
-      sandbox: true,
-      page: "challenge",
-      selectedChallenge: null,
-    },
-    "",
-    window.location.href
-  );
+  navigate(routes.challenge);
 }
 
   /* PRACTICE AGAIN */
@@ -182,49 +163,10 @@ function handlePractice(challengeId) {
     challengeId: String(challengeId),
   };
 
-  const newState = {
-    sandbox: true,
-    page: "challenge",
-    selectedChallenge: selected,
-  };
-
   setSelectedChallenge(selected);
   setMenuOpen(false);
-  setPage("challenge");
-
-  window.history.pushState(
-    newState,
-    "",
-    window.location.href
-  );
+  navigate(`${routes.challenge}/${selected.challengeId}`);
 }
-useEffect(() => {
-  function handlePopState(event) {
-    if (!event.state?.sandbox) {
-      return;
-    }
-
-    setPage(event.state.page || "challenge");
-
-    setSelectedChallenge(
-      event.state.selectedChallenge || null
-    );
-
-    setMenuOpen(false);
-  }
-
-  window.addEventListener(
-    "popstate",
-    handlePopState
-  );
-
-  return () => {
-    window.removeEventListener(
-      "popstate",
-      handlePopState
-    );
-  };
-}, []);
 
   /* LOGOUT */
 
@@ -237,7 +179,7 @@ useEffect(() => {
     setAssessmentReady(false);
     setMenuOpen(false);
 
-    setPage("login");
+    navigate(routes.login);
   }
 
   return (
@@ -246,12 +188,8 @@ useEffect(() => {
 
       {page === "login" && (
         <Login
-          onSignup={() =>
-            setPage("signup")
-          }
-          onCompanySignup={() =>
-            setPage("company-signup")
-          }
+          onSignup={() => changePage("signup")}
+          onCompanySignup={() => changePage("company-signup")}
           onLogin={handleLogin}
         />
       )}
@@ -261,10 +199,10 @@ useEffect(() => {
       {page === "signup" && (
         <Signup
           onLogin={handleLogin}
-          onSignIn={() => setPage("login")}
+          onSignIn={() => changePage("login")}
           onRequireVerification={(data) => {
             setVerificationData(data);
-            setPage("email-verification");
+            changePage("email-verification");
           }}
         />
       )}
@@ -278,7 +216,7 @@ useEffect(() => {
           password={verificationData?.password}
           role={verificationData?.role || "student"}
           onVerified={() => handleLogin()}
-          onBack={() => setPage("signup")}
+          onBack={() => changePage("signup")}
         />
       )}
 
@@ -294,7 +232,7 @@ useEffect(() => {
               setUser(JSON.parse(savedUser));
             }
 
-            setPage("company");
+            changePage("company");
           }}
         />
       )}
@@ -304,8 +242,8 @@ useEffect(() => {
       {page === "instructions" && (
         <Instructions
           onProceed={() => {
-            setPage("challenge");
             setAssessmentReady(true);
+            changePage("challenge");
           }}
         />
       )}
@@ -368,6 +306,14 @@ useEffect(() => {
                       }
                     >
                       🧩 Challenges
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        changePage("catalog")
+                      }
+                    >
+                      Browse Categories
                     </button>
 
                     <button
@@ -441,10 +387,14 @@ useEffect(() => {
                 setSelectedChallenge={setSelectedChallenge}
                 onStartAssessment={() => {
                   setAssessmentReady(false);
-                  setPage("instructions");
+                  changePage("instructions");
                 }}
                 assessmentReady={assessmentReady}
               />
+            )}
+
+            {page === "catalog" && (
+              <ChallengeCatalog onPractice={handlePractice} />
             )}
 
             {/* ================= LEADERBOARD ================= */}
