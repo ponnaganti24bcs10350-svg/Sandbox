@@ -1,7 +1,8 @@
-const challenges = require("../challenges/challenges");
+const { listChallenges } = require("../challenges/catalog");
 const User = require("../models/User");
 
-function getRandomUnsolvedChallenge(solvedIds) {
+function getRandomUnsolvedChallenge(solvedIds, category) {
+  const challenges = listChallenges({ category });
   const availableChallenges = challenges.filter(
     (challenge) =>
       !solvedIds.includes(challenge.challengeId)
@@ -30,14 +31,13 @@ async function getCurrentChallenge(req, res) {
       });
     }
 
-    const challengeId = req.query.challengeId;
+    const { challengeId, category } = req.query;
 
     // If frontend already has a challenge,
     // return that exact challenge.
     if (challengeId) {
-      const challenge = challenges.find(
-        (item) =>
-          item.challengeId === challengeId
+      const challenge = listChallenges({ category }).find(
+        (item) => item.challengeId === challengeId
       );
 
       if (challenge) {
@@ -50,7 +50,8 @@ async function getCurrentChallenge(req, res) {
 
     // Otherwise choose a new unsolved challenge.
     const challenge = getRandomUnsolvedChallenge(
-      user.solvedChallenges || []
+      user.solvedChallenges || [],
+      category
     );
 
     if (!challenge) {
@@ -92,8 +93,8 @@ async function getNextChallenge(req, res) {
       });
     }
 
-    const currentChallengeId =
-      req.query.challengeId;
+    const currentChallengeId = req.query.challengeId;
+    const challenges = listChallenges({ category: req.query.category });
 
     if (!currentChallengeId) {
       return res.status(400).json({
@@ -199,8 +200,8 @@ async function getPreviousChallenge(req, res) {
       });
     }
 
-    const currentChallengeId =
-      req.query.challengeId;
+    const currentChallengeId = req.query.challengeId;
+    const challenges = listChallenges({ category: req.query.category });
 
     if (!currentChallengeId) {
       return res.status(400).json({
@@ -224,8 +225,7 @@ async function getPreviousChallenge(req, res) {
       });
     }
 
-    const solvedIds =
-      user.solvedChallenges || [];
+    const solvedIds = user.solvedChallenges || [];
 
     // ------------------------------------
     // FIND PREVIOUS UNSOLVED CHALLENGE
@@ -298,6 +298,7 @@ async function getPracticedChallenges(
 
     const solvedIds =
       user.solvedChallenges || [];
+      const challenges = listChallenges({});
 
     const practicedChallenges =
       challenges.filter((challenge) =>

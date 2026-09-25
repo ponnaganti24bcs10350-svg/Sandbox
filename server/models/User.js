@@ -39,38 +39,77 @@ const userSchema = new mongoose.Schema(
       default: "student",
     },
 
-    // Daily progress
-    solvedToday: {
-      type: Number,
-      default: 0,
+  // ---- Progress tracking ----
+solvedToday: {
+  type: Number,
+  default: 0,
+},
+
+lastSolvedDate: {
+  type: String,
+  default: null,
+},
+
+totalSolved: {
+  type: Number,
+  default: 0,
+},
+
+currentStreak: {
+  type: Number,
+  default: 0,
+},
+
+longestStreak: {
+  type: Number,
+  default: 0,
+},
+
+    lastChallengeSolvedAt: {
+      type: Date,
+      default: null,
     },
 
-    lastSolvedDate: {
+    
+
+    /*
+     * Single-active-tab enforcement.
+     *
+     * Whichever browser tab/window last sent a heartbeat "owns" the
+     * active assessment. If a second tab (same browser or a different
+     * browser entirely, e.g. Chrome + Firefox) sends a heartbeat while
+     * the owner's heartbeat is still recent, that's a concurrent
+     * session and gets flagged as a "multiple_session" integrity event.
+     */
+    activeTabToken: {
       type: String,
       default: null,
     },
 
-    totalSolved: {
-      type: Number,
-      default: 0,
+    activeTabHeartbeatAt: {
+      type: Date,
+      default: null,
     },
-
     // Challenges solved by this user
     solvedChallenges: {
       type: [String],
       default: [],
     },
 
-    // Leaderboard scores
-    javascriptScore: {
-      type: Number,
-      default: 0,
-    },
+  backendScore: {
+  type: Number,
+  default: 0,
+},
 
-    reactScore: {
-      type: Number,
-      default: 0,
-    },
+javascriptScore: {
+  type: Number,
+  default: 0,
+},
+
+reactScore: {
+  type: Number,
+  default: 0,
+},
 
     googleId: {
       type: String,
@@ -79,6 +118,11 @@ const userSchema = new mongoose.Schema(
 
     avatar: {
       type: String,
+      default: null,
+    },
+
+    barredUntil: {
+      type: Date,
       default: null,
     },
   },
@@ -119,9 +163,13 @@ userSchema.methods.resetDailyIfNeeded = function () {
 
 // Record successful challenge
 userSchema.methods.recordSolve = function () {
+
+  const previousSolvedDate = this.lastSolvedDate;
+
   this.resetDailyIfNeeded();
 
   if (this.solvedToday >= DAILY_LIMIT) {
+
     const error = new Error(
       `Daily limit of ${DAILY_LIMIT} challenges reached. Come back tomorrow!`
     );
@@ -131,21 +179,99 @@ userSchema.methods.recordSolve = function () {
     throw error;
   }
 
+  const today = todayIST();
+
+  /*
+   * Calculate yesterday's date in IST.
+   */
+  const yesterdayDate = new Date(
+    `${today}T00:00:00+05:30`
+  );
+
+  yesterdayDate.setDate(
+    yesterdayDate.getDate() - 1
+  );
+
+  const yesterday = yesterdayDate.toLocaleDateString(
+    "en-CA",
+    {
+      timeZone: "Asia/Kolkata",
+    }
+  );
+
+  /*
+   * Update streak.
+   *
+   * First challenge ever:
+   *     0 → 1
+   *
+   * Solved yesterday:
+   *     current streak + 1
+   *
+   * Missed one or more days:
+   *     reset to 1
+   *
+   * Multiple challenges on the same day:
+   *     streak stays unchanged
+   */
+  if (!previousSolvedDate) {
+
+    this.currentStreak = 1;
+
+  } else if (previousSolvedDate === yesterday) {
+
+    this.currentStreak += 1;
+
+  } else if (previousSolvedDate !== today) {
+
+    this.currentStreak = 1;
+  }
+
+  /*
+   * Keep track of the highest streak achieved.
+   */
+  if (
+    this.currentStreak >
+    this.longestStreak
+  ) {
+    this.longestStreak =
+      this.currentStreak;
+  }
+
   this.solvedToday += 1;
+
   this.totalSolved += 1;
+
+  this.lastSolvedDate = today;
+
+  this.lastChallengeSolvedAt = new Date();
 };
 
 // Progress information
 userSchema.methods.progressSummary = function () {
+
   return {
     solvedToday: this.solvedToday,
+
     dailyLimit: DAILY_LIMIT,
+
     remainingToday: Math.max(
       0,
       DAILY_LIMIT - this.solvedToday
     ),
-    limitReached: this.solvedToday >= DAILY_LIMIT,
+
+    limitReached:
+      this.solvedToday >= DAILY_LIMIT,
+
     totalSolved: this.totalSolved,
+
+    currentStreak: this.currentStreak,
+
+    longestStreak: this.longestStreak,
+
+    lastChallengeSolvedAt:
+      this.lastChallengeSolvedAt,
+
     date: todayIST(),
   };
 };

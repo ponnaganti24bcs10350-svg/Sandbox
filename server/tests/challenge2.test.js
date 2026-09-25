@@ -152,10 +152,16 @@ async function runController(source, page, limit, options = {}) {
   return { response, tracker, users, posts };
 }
 
+const failureAreas = new Set();
+
+let currentArea = "General";
+
 function pass(message) {
   return { ok: true, message };
 }
+
 function fail(message) {
+  failureAreas.add(currentArea);
   return { ok: false, message };
 }
 
@@ -182,6 +188,7 @@ async function testChallenge2(files) {
       message: "Challenge 2 controller is missing.",
     };
   }
+currentArea = "API contract & pagination";
 
   await add("basic response contract", async () => {
     const { response } = await runController(controllerSource, 1, 20);
@@ -198,6 +205,7 @@ async function testChallenge2(files) {
       ? pass("Pagination works.")
       : fail("Pagination is incorrect.");
   });
+currentArea = "Data correctness";
 
   await add("published filtering", async () => {
     const { response } = await runController(controllerSource, 1, 100);
@@ -212,6 +220,7 @@ async function testChallenge2(files) {
     const ok = post && ["id", "title", "content", "tags", "createdAt", "author"].every((k) => Object.prototype.hasOwnProperty.call(post, k));
     return ok ? pass("Complete post data is preserved.") : fail("Required post fields are missing.");
   });
+currentArea = "Ordering & author data";
 
   await add("newest first", async () => {
     const { response } = await runController(controllerSource, 1, 20);
@@ -236,6 +245,7 @@ async function testChallenge2(files) {
       ? pass("Author information is included.")
       : fail("Author information is missing or incomplete.");
   });
+currentArea = "Pagination limits";
 
   await add("larger page", async () => {
     const { response } = await runController(controllerSource, 1, 100);
@@ -243,6 +253,7 @@ async function testChallenge2(files) {
       ? pass("Maximum page size works.")
       : fail("Larger page size is not handled correctly.");
   });
+currentArea = "Performance & database access";
 
   await add("bounded author queries", async () => {
     const { tracker } = await runController(controllerSource, 1, 50);
@@ -259,6 +270,7 @@ async function testChallenge2(files) {
       ? pass("Large dataset is handled efficiently.")
       : fail(`Large dataset efficiency failed (${elapsed}ms, userFind=${tracker.userFindCalls}, findById=${tracker.userFindByIdCalls}).`);
   });
+currentArea = "Pagination behaviour";
 
   await add("different pages return different data", async () => {
     const a = await runController(controllerSource, 1, 10);
@@ -275,6 +287,7 @@ async function testChallenge2(files) {
     const idsB = b.response.body.data.map((p) => p.id).join(",");
     return idsA !== idsB ? pass("Response depends on requested page.") : fail("Page parameter is not affecting the result.");
   });
+currentArea = "Route registration";
 
   await add("route registration", async () => {
     if (!routeSource) return fail("postRoutes.js is missing.");
@@ -294,6 +307,7 @@ async function testChallenge2(files) {
       ? pass("Posts route is registered correctly.")
       : fail("Posts route is not registered correctly.");
   });
+currentArea = "Regression coverage";
 
   await add("regression coverage", async () => {
     if (!existingTests) return fail("Existing tests are missing.");
@@ -314,14 +328,15 @@ async function testChallenge2(files) {
   const totalTests = tests.length;
   const passed = testsPassed === totalTests && totalTests === 14;
 
-  return {
-    passed,
-    testsPassed,
-    totalTests,
-    message: passed
-      ? "Performance investigation passed. The posts API preserves its contract and handles the large dataset efficiently."
-      : "Performance tests failed. Investigate the API, database access pattern, and regression behaviour.",
-  };
+ return {
+  passed,
+  testsPassed,
+  totalTests,
+  failureAreas: [...failureAreas],
+  message: passed
+    ? "Performance investigation passed. The posts API preserves its contract and handles the large dataset efficiently."
+    : "Tests failed. Review the affected areas and investigate the relevant application flow.",
+};
 }
 
 module.exports = testChallenge2;

@@ -1,9 +1,7 @@
-const challenges = require("../challenges/challenges");
+const { getChallengeById } = require("../challenges/catalog");
+const { getChallengeRunner } = require("../challenges/runners");
 const User = require("../models/User");
 const AssessmentSession = require("../models/AssessmentSession");
-const testChallenge1 = require("../tests/challenge1.test");
-const testChallenge2 = require("../tests/challenge2.test");
-const testChallenge3 = require("../tests/challenge3.test");
 
 async function runChallenge(req, res) {
   try {
@@ -22,26 +20,17 @@ async function runChallenge(req, res) {
     // REQUIRE ACTIVE ASSESSMENT SESSION
     // ------------------------------------
 
-    const activeSession = await AssessmentSession.findOne({
-      candidate: userId,
-      challenge: challengeId,
-      status: "active",
-    });
-
-    if (!activeSession) {
-      return res.status(403).json({
-        passed: false,
-        message: "No active assessment session for this challenge.",
-      });
-    }
+  const activeSession = await AssessmentSession.findOne({
+  candidate: userId,
+  challenge: challengeId,
+  status: "active",
+});
 
     // ------------------------------------
     // FIND CHALLENGE
     // ------------------------------------
 
-    const challenge = challenges.find(
-      (item) => item.challengeId === challengeId
-    );
+    const challenge = getChallengeById(challengeId);
 
     if (!challenge) {
       return res.status(404).json({
@@ -54,15 +43,9 @@ async function runChallenge(req, res) {
     // RUN TESTS
     // ------------------------------------
 
-    let result;
+    const runner = getChallengeRunner(challengeId);
 
-    if (challengeId === "1") {
-      result = await testChallenge1(files);
-    } else if (challengeId === "2") {
-      result = await testChallenge2(files);
-    } else if (challengeId === "3") {
-      result = await testChallenge3(files);
-    } else {
+    if (!runner) {
       return res.json({
         passed: false,
         testsPassed: 0,
@@ -70,6 +53,8 @@ async function runChallenge(req, res) {
         message: "Tests for this challenge are not available yet.",
       });
     }
+
+    const result = await runner(files);
 
     let newlySolved = false;
     let updatedUser = null;
@@ -82,12 +67,9 @@ async function runChallenge(req, res) {
       const today = User.todayIST();
       const dailyLimit = User.DAILY_LIMIT;
 
-      const scoreIncrease =
-        challengeId === "1" ||
-        challengeId === "2" ||
-        challengeId === "3"
-          ? 5
-          : 0;
+    const scoreIncrease = Math.round(
+  100 / 3
+);
 
       // ------------------------------------
       // ATOMIC SOLVE UPDATE
@@ -124,43 +106,181 @@ async function runChallenge(req, res) {
         [
           {
             $set: {
-              solvedToday: {
-                $cond: [
-                  {
-                    $ne: ["$lastSolvedDate", today],
-                  },
+  solvedToday: {
+    $cond: [
+      {
+        $ne: ["$lastSolvedDate", today],
+      },
+      1,
+      {
+        $add: ["$solvedToday", 1],
+      },
+    ],
+  },
+
+  lastSolvedDate: today,
+
+  lastChallengeSolvedAt: new Date(),
+
+  totalSolved: {
+    $add: ["$totalSolved", 1],
+  },
+
+  solvedChallenges: {
+    $setUnion: [
+      "$solvedChallenges",
+      [challengeId],
+    ],
+  },
+
+  currentStreak: {
+    $cond: [
+      {
+        $or: [
+          {
+            $eq: ["$lastSolvedDate", null],
+          },
+          {
+            $eq: ["$lastSolvedDate", today],
+          },
+        ],
+      },
+
+      "$currentStreak",
+
+      {
+        $cond: [
+          {
+            $eq: [
+              "$lastSolvedDate",
+              new Date(
+                new Date(`${today}T00:00:00+05:30`).getTime() -
+                  24 * 60 * 60 * 1000
+              )
+                .toISOString()
+                .slice(0, 10),
+            ],
+          },
+
+          {
+            $add: [
+              "$currentStreak",
+              1,
+            ],
+          },
+
+          1,
+        ],
+      },
+    ],
+  },
+
+  longestStreak: {
+    $max: [
+      "$longestStreak",
+      {
+        $cond: [
+          {
+            $or: [
+              {
+                $eq: ["$lastSolvedDate", null],
+              },
+              {
+                $eq: ["$lastSolvedDate", today],
+              },
+            ],
+          },
+
+          "$currentStreak",
+
+          {
+            $cond: [
+              {
+                $eq: [
+                  "$lastSolvedDate",
+                  new Date(
+                    new Date(`${today}T00:00:00+05:30`).getTime() -
+                      24 * 60 * 60 * 1000
+                  )
+                    .toISOString()
+                    .slice(0, 10),
+                ],
+              },
+
+              {
+                $add: [
+                  "$currentStreak",
                   1,
-                  {
-                    $add: ["$solvedToday", 1],
-                  },
                 ],
               },
 
-              lastSolvedDate: today,
+              1,
+            ],
+          },
+        ],
+      },
+    ],
+  },
 
-              totalSolved: {
-                $add: ["$totalSolved", 1],
+  backendScore: {
+    $switch: {
+      branches: [
+        {
+          case: {
+            $eq: [
+              {
+                $size: {
+                  $setUnion: [
+                    "$solvedChallenges",
+                    [challengeId],
+                  ],
+                },
               },
+              1,
+            ],
+          },
+          then: 33,
+        },
 
-              solvedChallenges: {
-                $setUnion: [
-                  "$solvedChallenges",
-                  [challengeId],
-                ],
+        {
+          case: {
+            $eq: [
+              {
+                $size: {
+                  $setUnion: [
+                    "$solvedChallenges",
+                    [challengeId],
+                  ],
+                },
               },
+              2,
+            ],
+          },
+          then: 66,
+        },
 
-              javascriptScore: {
-                $min: [
-                  100,
-                  {
-                    $add: [
-                      "$javascriptScore",
-                      scoreIncrease,
-                    ],
-                  },
-                ],
+        {
+          case: {
+            $gte: [
+              {
+                $size: {
+                  $setUnion: [
+                    "$solvedChallenges",
+                    [challengeId],
+                  ],
+                },
               },
-            },
+              3,
+            ],
+          },
+          then: 100,
+        },
+      ],
+
+      default: 0,
+    },
+  },
+},
           },
         ],
         {
@@ -206,7 +326,10 @@ async function runChallenge(req, res) {
       }
 
       newlySolved = true;
-
+console.log(
+  "BACKEND SCORE:",
+  updatedUser.backendScore
+);
       console.log(
         `New challenge solved: ${challengeId} by ${updatedUser.email}`
       );
@@ -219,9 +342,15 @@ const candidateResult = {
   passed: result.passed,
   testsPassed: result.testsPassed,
   totalTests: result.totalTests,
+
   message: result.passed
     ? "Challenge solved successfully."
-    : "Tests failed. Review your implementation and try again.",
+    : "Tests failed. Review the affected areas and investigate the relevant application flow.",
+
+  failureAreas:
+    !result.passed && Array.isArray(result.failureAreas)
+      ? result.failureAreas
+      : [],
 };
 
 return res.json({

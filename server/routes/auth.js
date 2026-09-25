@@ -2,7 +2,21 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { OAuth2Client } = require("google-auth-library");
+const { initializeApp, getApps, cert } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+
+if (!getApps().length) {
+  try {
+    // We expect the service account JSON string in FIREBASE_SERVICE_ACCOUNT env variable
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    initializeApp({
+      credential: cert(serviceAccount)
+    });
+  } catch (error) {
+    console.error("Firebase Admin initialization error. Ensure FIREBASE_SERVICE_ACCOUNT is set in .env");
+  }
+}
+
 const User = require("../models/User");
 const VerificationCode = require("../models/VerificationCode");
 const { sendVerificationEmail } = require("../services/emailService");
@@ -30,23 +44,44 @@ const verificationLimiter = rateLimit({
     message: "Too many verification requests. Please try again later.",
   },
 });
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+// Google client removed for Firebase
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 
-const userResponse = (user) => ({
-  id: user._id,
-  name: user.name,
-  email: user.email,
-  role: user.role,
-  avatar: user.avatar || null,
-  javascriptScore: user.javascriptScore,
-  reactScore: user.reactScore,
-  progress: user.progressSummary(),
-});
+const userResponse = (user) => {
+  const solvedCount = Array.isArray(user.solvedChallenges)
+    ? user.solvedChallenges.length
+    : 0;
+
+  const calculatedBackendScore =
+    solvedCount === 0
+      ? 0
+      : solvedCount === 1
+        ? 33
+        : solvedCount === 2
+          ? 66
+          : 100;
+
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+
+    javascriptScore: user.javascriptScore,
+    reactScore: user.reactScore,
+
+    backendScore:
+      user.backendScore > 0
+        ? user.backendScore
+        : calculatedBackendScore,
+
+    progress: user.progressSummary(),
+  };
+};
 
 // @route  POST /api/auth/send-verification
 // @body   { email }
@@ -224,27 +259,18 @@ router.post("/google", async (req, res) => {
 
     if (credential) {
       try {
-        const ticket = await googleClient.verifyIdToken({
-          idToken: credential,
-          audience: process.env.GOOGLE_CLIENT_ID,
-        });
-       const payload = ticket.getPayload();
-
-if (!payload.email_verified) {
-  return res.status(401).json({
-    success: false,
-    message: "Google email is not verified",
-  });
-}
-
-email = payload.email;
-name = payload.name;
-picture = payload.picture;
-googleId = payload.sub;
+        const decodedToken = await getAuth().verifyIdToken(credential);
+        
+        email = decodedToken.email;
+        name = decodedToken.name;
+        picture = decodedToken.picture;
+        googleId = decodedToken.uid;
       } catch (verifyErr) {
+  console.error("Firebase verify error:", verifyErr.code, verifyErr.message);
+
   return res.status(401).json({
     success: false,
-    message: "Invalid Google credential",
+    message: verifyErr.message,
   });
 }
     }
