@@ -1,0 +1,737 @@
+/* =========================================================
+   SANDBOX — LEADERBOARD
+   Premium editorial / orange + cream theme
+========================================================= */
+
+.leaderboard-page {
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+
+  background: #f5f2ed;
+  color: #111111;
+
+  padding: 92px 4.5vw 80px;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+
+  overflow-x: hidden;
+}
+
+.leaderboard-container {
+  width: 100%;
+  max-width: 1450px;
+  margin: 0 auto;
+}
+
+
+/* =========================================================
+   HEADING
+========================================================= */
+
+.leaderboard-heading {
+  margin-bottom: 48px;
+}
+
+.leaderboard-eyebrow {
+  display: block;
+
+  margin-bottom: 16px;
+
+  color: #f2643d;
+
+  font-size: 12px;
+  line-height: 1;
+
+  font-weight: 800;
+  letter-spacing: 0.18em;
+
+  text-transform: uppercase;
+}
+
+.leaderboard-title {
+  margin: 0;
+
+  color: #111111;
+
+  font-size: clamp(48px, 6vw, 82px);
+  line-height: 0.95;
+
+  font-weight: 750;
+  letter-spacing: -0.065em;
+}
+
+.leaderboard-subtitle {
+  margin: 20px 0 0;
+
+  color: #777777;
+
+  font-size: 16px;
+  line-height: 1.5;
+
+  letter-spacing: -0.01em;
+}
+
+
+/* =========================================================
+   STATS
+========================================================= */
+
+.leaderboard-stats {
+  width: 100%;
+
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  margin-bottom: 24px;
+
+  background: #ffffff;
+
+  border: 1px solid #e5dfd7;
+  border-radius: 20px;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.035);
+}
+
+.leaderboard-stat {
+  position: relative;
+
+  min-height: 185px;
+
+  padding: 28px 30px;
+
+  display: flex;
+  flex-direction: column;
+
+  justify-content: flex-end;
+
+  box-sizing: border-box;
+}
+
+.leaderboard-stat + .leaderboard-stat {
+  border-left: 1px solid #e8e2da;
+}
+
+.stat-icon {
+  position: absolute;
+
+  top: 26px;
+  right: 28px;
+
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #fff0ea;
+
+  color: #f2643d;
+
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.stat-label {
+  display: block;
+
+  margin-bottom: 9px;
+
+  color: #8a847d;
+
+  font-size: 10px;
+  line-height: 1;
+
+  font-weight: 800;
+  letter-spacing: 0.15em;
+
+  text-transform: uppercase;
+}
+
+.stat-value {
+  display: block;
+
+  color: #111111;
+
+  font-size: 40px;
+  line-height: 1;
+
+  font-weight: 750;
+
+  letter-spacing: -0.045em;
+}
+
+.stat-description {
+  display: block;
+
+  margin-top: 9px;
+
+  color: #99928b;
+
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+
+/* =========================================================
+   LEADERBOARD LIST
+========================================================= */
+
+.leaderboard-list {
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 10px;
+}
+
+
+/* =========================================================
+   DEVELOPER CARD
+========================================================= */
+
+.leaderboard-card {
+  position: relative;
+
+  width: 100%;
+  min-height: 104px;
+
+  padding: 20px 24px;
+
+  display: grid;
+
+  grid-template-columns:
+    58px
+    48px
+    minmax(180px, 1fr)
+    minmax(260px, 1.7fr)
+    30px;
+
+  align-items: center;
+
+  gap: 18px;
+
+  box-sizing: border-box;
+
+  background: #ffffff;
+
+  border: 1px solid #e7e1da;
+  border-radius: 16px;
+
+  color: #111111;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.leaderboard-card:hover {
+  transform: none;
+  border-color: #e7e1da;
+  box-shadow: none;
+}
+
+/* =========================================================
+   CURRENT USER
+========================================================= */
+
+.leaderboard-card.current-user {
+  background: #fff0e9;
+
+  border-color: #f4b19d;
+
+  box-shadow:
+    0 10px 28px rgba(242, 100, 61, 0.08);
+}
+
+.leaderboard-card.current-user:hover {
+  border-color: #f2643d;
+}
+
+
+/* =========================================================
+   RANK
+========================================================= */
+
+.rank {
+  width: 58px;
+
+  color: #77716b;
+
+  font-size: 14px;
+  font-weight: 750;
+
+  text-align: center;
+}
+
+.rank-1,
+.rank-2,
+.rank-3 {
+  font-size: 27px;
+}
+
+.rank-1 {
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.1));
+}
+
+.rank-2,
+.rank-3 {
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.08));
+}
+
+
+/* =========================================================
+   AVATAR
+========================================================= */
+
+.avatar {
+  width: 46px;
+  height: 46px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #111111;
+
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  letter-spacing: 0.02em;
+}
+
+.current-user .avatar {
+  background: #f2643d;
+  color: #ffffff;
+}
+
+
+/* =========================================================
+   USER INFO
+========================================================= */
+
+.user-info {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+.user-main {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+}
+
+.username {
+  margin: 0;
+
+  max-width: 100%;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: #111111;
+
+  font-size: 16px;
+  line-height: 1.2;
+
+  font-weight: 700;
+
+  letter-spacing: -0.02em;
+}
+
+.you-badge {
+  flex-shrink: 0;
+
+  padding: 4px 7px;
+
+  border-radius: 5px;
+
+  background: #f2643d;
+
+  color: #ffffff;
+
+  font-size: 8px;
+  line-height: 1;
+
+  font-weight: 800;
+
+  letter-spacing: 0.1em;
+}
+
+
+/* =========================================================
+   SKILL TAG
+========================================================= */
+
+.skill-tag {
+  align-self: flex-start;
+
+  padding: 5px 8px;
+
+  border-radius: 5px;
+
+  background: #f4f1ed;
+
+  color: #77716b;
+
+  font-size: 9px;
+  line-height: 1;
+
+  font-weight: 800;
+
+  letter-spacing: 0.1em;
+
+  text-transform: uppercase;
+}
+
+.current-user .skill-tag {
+  background: #ffffff;
+  color: #f2643d;
+}
+
+
+/* =========================================================
+   SCORE
+========================================================= */
+
+.score-section {
+  min-width: 0;
+}
+
+.score-row {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+}
+
+.progress-bar {
+  flex: 1;
+
+  min-width: 80px;
+
+  height: 7px;
+
+  overflow: hidden;
+
+  border-radius: 999px;
+
+  background: #ece7e1;
+}
+
+.progress {
+  height: 100%;
+
+  border-radius: inherit;
+
+  background: #f2643d;
+
+  transition: width 0.4s ease;
+}
+
+.score {
+  flex-shrink: 0;
+
+  min-width: 46px;
+
+  color: #111111;
+
+  font-size: 14px;
+  line-height: 1;
+
+  font-weight: 750;
+
+  text-align: right;
+}
+
+
+/* =========================================================
+   ARROW
+========================================================= */
+
+.leaderboard-arrow {
+  color: #b0aaa4;
+
+  font-size: 22px;
+  line-height: 1;
+
+  font-weight: 400;
+
+  text-align: right;
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.leaderboard-card:hover .leaderboard-arrow {
+  color: #b0aaa4;
+  transform: none;
+}
+/* =========================================================
+   ERROR
+========================================================= */
+
+.leaderboard-error {
+  padding: 40px;
+
+  background: #ffffff;
+
+  border: 1px solid #eadfd8;
+  border-radius: 16px;
+
+  color: #111111;
+
+  text-align: center;
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.035);
+}
+
+.leaderboard-error p {
+  margin: 6px 0;
+
+  color: #777777;
+
+  font-size: 14px;
+}
+
+.leaderboard-error p:first-child {
+  color: #111111;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.leaderboard-empty {
+  padding: 65px 30px;
+
+  background: #ffffff;
+
+  border: 1px solid #e7e1da;
+  border-radius: 18px;
+
+  text-align: center;
+}
+
+.leaderboard-empty h2 {
+  margin: 0 0 8px;
+
+  color: #111111;
+
+  font-size: 22px;
+}
+
+.leaderboard-empty p {
+  margin: 0;
+
+  color: #88817a;
+
+  font-size: 14px;
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1050px) {
+  .leaderboard-page {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .leaderboard-card {
+    grid-template-columns:
+      48px
+      44px
+      minmax(150px, 1fr)
+      minmax(200px, 1.4fr)
+      24px;
+
+    gap: 14px;
+
+    padding: 18px;
+  }
+
+  .rank {
+    width: 48px;
+  }
+
+  .avatar {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 760px) {
+  .leaderboard-page {
+    padding: 78px 18px 55px;
+  }
+
+  .leaderboard-heading {
+    margin-bottom: 32px;
+  }
+
+  .leaderboard-title {
+    font-size: clamp(42px, 12vw, 62px);
+  }
+
+  .leaderboard-subtitle {
+    font-size: 14px;
+  }
+
+  .leaderboard-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .leaderboard-stat {
+    min-height: 145px;
+
+    padding: 24px;
+  }
+
+  .leaderboard-stat + .leaderboard-stat {
+    border-left: 0;
+    border-top: 1px solid #e8e2da;
+  }
+
+  .stat-value {
+    font-size: 34px;
+  }
+
+  .leaderboard-card {
+    min-height: 0;
+
+    padding: 18px;
+
+    grid-template-columns:
+      38px
+      44px
+      minmax(0, 1fr)
+      25px;
+
+    gap: 12px;
+  }
+
+  .rank {
+    width: 38px;
+    font-size: 12px;
+  }
+
+  .rank-1,
+  .rank-2,
+  .rank-3 {
+    font-size: 22px;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .username {
+    font-size: 14px;
+  }
+
+  .score-section {
+    grid-column: 3 / 5;
+    width: 100%;
+    margin-top: 5px;
+  }
+
+  .leaderboard-arrow {
+    grid-column: 4;
+    grid-row: 1;
+
+    align-self: center;
+  }
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 480px) {
+  .leaderboard-page {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .leaderboard-card {
+    padding: 15px;
+
+    grid-template-columns:
+      32px
+      40px
+      minmax(0, 1fr)
+      20px;
+
+    gap: 9px;
+
+    border-radius: 13px;
+  }
+
+  .rank {
+    width: 32px;
+  }
+
+  .avatar {
+    width: 36px;
+    height: 36px;
+
+    font-size: 11px;
+  }
+
+  .skill-tag {
+    font-size: 8px;
+  }
+
+  .score {
+    font-size: 12px;
+  }
+
+  .progress-bar {
+    height: 6px;
+  }
+}

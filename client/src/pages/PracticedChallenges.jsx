@@ -15,7 +15,6 @@ function PracticedChallenges({ onPractice }) {
         const response = await fetch(
           `${getApiUrl()}/api/progress/practiced`,
           {
-
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -26,8 +25,7 @@ function PracticedChallenges({ onPractice }) {
 
         if (!response.ok || !result.success) {
           throw new Error(
-            result.message ||
-              "Failed to fetch practiced challenges"
+            result.message || "Failed to fetch practiced challenges"
           );
         }
 
@@ -39,8 +37,7 @@ function PracticedChallenges({ onPractice }) {
         );
 
         setError(
-          error.message ||
-            "Unable to connect to server"
+          error.message || "Unable to connect to server"
         );
       }
     }
@@ -68,13 +65,11 @@ function PracticedChallenges({ onPractice }) {
             >
               <h2>{challenge.title}</h2>
 
-              <p>{challenge.description}</p>
-
               <button
-  onClick={() => onPractice(challenge.challengeId)}
->
-  Practice Again
-</button>
+                onClick={() => onPractice(challenge.challengeId)}
+              >
+                Practice Again
+              </button>
             </div>
           ))}
         </div>

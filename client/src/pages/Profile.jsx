@@ -1,18 +1,89 @@
+import { useEffect, useState } from "react";
+import { getApiUrl } from "../config/api";
 import "./Profile.css";
 
 function Profile({ user, onBack }) {
-  const totalSolved =
-    user?.progress?.totalSolved || 0;
+  const [profileUser, setProfileUser] = useState(user);
+  const [loading, setLoading] = useState(true);
 
-  const javascriptScore =
-    user?.javascriptScore || 0;
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const token = localStorage.getItem("token");
 
-  const reactScore =
-    user?.reactScore || 0;
+        if (!token) {
+          setProfileUser(user);
+          return;
+        }
 
-  const engineeringScore = Math.round(
-    (javascriptScore + reactScore) / 2
+        const response = await fetch(
+          `${getApiUrl()}/api/auth/me`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const result = await response.json();
+        console.log("PROFILE API USER:", result.user);
+
+        if (response.ok && result.success) {
+          setProfileUser(result.user);
+        } else {
+          setProfileUser(user);
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load profile:",
+          error
+        );
+
+        setProfileUser(user);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProfile();
+  }, [user]);
+
+  const currentUser = profileUser || user;
+
+  const totalSolved = Number(
+    currentUser?.progress?.totalSolved || 0
   );
+
+  const backendScore = Number(
+    currentUser?.backendScore || 0
+  );
+
+  const hasBackendData =
+    backendScore > 0;
+
+  const currentStreak = Number(
+    currentUser?.progress?.currentStreak ??
+    currentUser?.currentStreak ??
+    0
+  );
+
+  const isVerified =
+    currentUser?.verified === true ||
+    currentUser?.isVerified === true ||
+    currentUser?.emailVerified === true;
+
+  const recentChallenges =
+    Array.isArray(currentUser?.recentChallenges)
+      ? currentUser.recentChallenges
+      : [];
+
+  const initials = (
+    currentUser?.name ||
+    "Developer"
+  )
+    .trim()
+    .charAt(0)
+    .toUpperCase();
 
   return (
     <div className="profile-page">
@@ -37,22 +108,23 @@ function Profile({ user, onBack }) {
       <section className="profile-header-card">
 
         <div className="profile-avatar">
-          {(user?.name || "U")
-            .charAt(0)
-            .toUpperCase()}
+          {initials}
         </div>
 
         <div className="profile-identity">
           <h1>
-            {user?.name || "Developer"}
+            {currentUser?.name || "Developer"}
           </h1>
 
           <p>
-            {user?.email || ""}
+            {currentUser?.email ||
+              "No email available"}
           </p>
 
           <span className="profile-role">
-            Developer
+            {currentUser?.role === "company"
+              ? "Company"
+              : "Developer"}
           </span>
         </div>
 
@@ -70,19 +142,9 @@ function Profile({ user, onBack }) {
       <section className="profile-stats">
 
         <div className="profile-stat">
-          <span>Engineering Score</span>
-
-          <strong>
-            {engineeringScore}
-          </strong>
-
-          <small>
-            Based on demonstrated skills
-          </small>
-        </div>
-
-        <div className="profile-stat">
-          <span>Challenges Solved</span>
+          <span>
+            Challenges Solved
+          </span>
 
           <strong>
             {totalSolved}
@@ -94,9 +156,13 @@ function Profile({ user, onBack }) {
         </div>
 
         <div className="profile-stat">
-          <span>Current Streak</span>
+          <span>
+            Current Streak
+          </span>
 
-          <strong>0</strong>
+          <strong>
+            {currentStreak}
+          </strong>
 
           <small>
             Days
@@ -104,14 +170,26 @@ function Profile({ user, onBack }) {
         </div>
 
         <div className="profile-stat">
-          <span>Verification</span>
+          <span>
+            Verification
+          </span>
 
-          <strong className="not-verified">
-            Not verified
+          <strong
+            className={
+              isVerified
+                ? "verified"
+                : "not-verified"
+            }
+          >
+            {isVerified
+              ? "Verified"
+              : "Not verified"}
           </strong>
 
           <small>
-            Complete verification later
+            {isVerified
+              ? "Account verified"
+              : "Complete verification later"}
           </small>
         </div>
 
@@ -123,7 +201,9 @@ function Profile({ user, onBack }) {
 
         <div className="profile-section-heading">
           <div>
-            <h2>Skills</h2>
+            <h2>
+              Skills
+            </h2>
 
             <p>
               Your demonstrated engineering abilities
@@ -133,106 +213,35 @@ function Profile({ user, onBack }) {
 
         <div className="skills-grid">
 
-          {/* JAVASCRIPT */}
-
           <div className="skill-card">
 
             <div className="skill-card-top">
-              <strong>JavaScript</strong>
+              <strong>
+                Backend
+              </strong>
 
               <span>
-                {javascriptScore}
+                {hasBackendData
+                  ? `${backendScore}%`
+                  : "—"}
               </span>
             </div>
 
             <div className="skill-bar">
               <div
                 style={{
-                  width: `${javascriptScore}%`,
+                  width: `${Math.min(
+                    backendScore,
+                    100
+                  )}%`,
                 }}
               />
             </div>
 
             <small>
-              {javascriptScore > 0
-                ? "Based on completed challenges"
-                : "Not enough data yet"}
-            </small>
-
-          </div>
-
-          {/* REACT */}
-
-          <div className="skill-card">
-
-            <div className="skill-card-top">
-              <strong>React</strong>
-
-              <span>
-                {reactScore}
-              </span>
-            </div>
-
-            <div className="skill-bar">
-              <div
-                style={{
-                  width: `${reactScore}%`,
-                }}
-              />
-            </div>
-
-            <small>
-              {reactScore > 0
-                ? "Based on completed challenges"
-                : "Not enough data yet"}
-            </small>
-
-          </div>
-
-          {/* FRONTEND */}
-
-          <div className="skill-card">
-
-            <div className="skill-card-top">
-              <strong>Frontend</strong>
-
-              <span>—</span>
-            </div>
-
-            <div className="skill-bar">
-              <div
-                style={{
-                  width: "0%",
-                }}
-              />
-            </div>
-
-            <small>
-              More skill data required
-            </small>
-
-          </div>
-
-          {/* BACKEND */}
-
-          <div className="skill-card">
-
-            <div className="skill-card-top">
-              <strong>Backend</strong>
-
-              <span>—</span>
-            </div>
-
-            <div className="skill-bar">
-              <div
-                style={{
-                  width: "0%",
-                }}
-              />
-            </div>
-
-            <small>
-              More skill data required
+              {hasBackendData
+                ? "Based on demonstrated backend skills"
+                : "More skill data required"}
             </small>
 
           </div>
@@ -248,7 +257,9 @@ function Profile({ user, onBack }) {
         <div className="profile-section-heading">
           <div>
 
-            <h2>Recent Challenges</h2>
+            <h2>
+              Recent Challenges
+            </h2>
 
             <p>
               Your latest engineering activity
@@ -257,22 +268,50 @@ function Profile({ user, onBack }) {
           </div>
         </div>
 
-        <div className="profile-empty">
+        {recentChallenges.length > 0 ? (
+          <div className="profile-recent-list">
+            {recentChallenges.map(
+              (challenge, index) => (
+                <div
+                  className="profile-recent-item"
+                  key={
+                    challenge?._id ||
+                    challenge?.id ||
+                    index
+                  }
+                >
+                  <strong>
+                    {challenge?.title ||
+                      challenge?.name ||
+                      "Challenge"}
+                  </strong>
 
-          <div className="profile-empty-icon">
-            ✓
+                  <span>
+                    {challenge?.status ||
+                      "Completed"}
+                  </span>
+                </div>
+              )
+            )}
           </div>
+        ) : (
+          <div className="profile-empty">
 
-          <strong>
-            No challenges yet
-          </strong>
+            <div className="profile-empty-icon">
+              ✓
+            </div>
 
-          <p>
-            Solve challenges to start building
-            your engineering profile.
-          </p>
+            <strong>
+              No challenges yet
+            </strong>
 
-        </div>
+            <p>
+              Solve challenges to start building
+              your engineering profile.
+            </p>
+
+          </div>
+        )}
 
       </section>
 
