@@ -22,11 +22,17 @@ const app = express();
 // Middleware
 const allowedOrigins = [
   "http://localhost:5174",
-  "https://YOUR-FRONTEND-DOMAIN.com"
+  "https://sandbox-platform.vercel.app"
 ];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
