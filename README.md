@@ -215,7 +215,7 @@ Sandbox is built for anyone who believes practical ability deserves recognition.
 
 Sandbox is built by a team passionate about technology, innovation, and creating meaningful opportunities.
 
-| Founder | Role |
+| Founder | 
 |---|---|
 | **Srividya Ponnaganti** |
 | **Khushi Sarawagi** |
