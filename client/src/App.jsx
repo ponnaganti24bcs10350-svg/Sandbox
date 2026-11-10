@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+
 
 import CompanyDashboard from "./pages/CompanyDashboard";
 import ChallengeWorkspace from "./pages/ChallengeWorkspace";
+import ChallengeCatalog from "./pages/ChallengeCatalog";
 import Leaderboard from "./pages/Leaderboard";
 import PracticedChallenges from "./pages/PracticedChallenges";
 import Login from "./pages/Login";
@@ -10,11 +13,29 @@ import CompanySignup from "./pages/CompanySignup";
 import Profile from "./pages/Profile";
 import StudentInvitations from "./pages/StudentInvitations";
 import EmailVerification from "./pages/EmailVerification";
-
+import Instructions from "./pages/Instructions";
+import { useBlockAIOverlays } from "./utils/aiOverlayBlocker";
+import {
+  challengeIdFromPath,
+  pageFromPath,
+  routes,
+} from "./app/routes";
 
 function App() {
+  // This hook already existed in utils/aiOverlayBlocker.js but was never
+  // actually called anywhere, so it did nothing. Mounting it here runs it
+  // on every page (including the company dashboard), which is what
+  // watches for/removes injected ChatGPT/Gemini/Copilot/etc. overlay UI.
+  useBlockAIOverlays();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
   const [verificationData, setVerificationData] = useState(null);
+  const [assessmentReady, setAssessmentReady] = useState(false);
   const [page, setPage] = useState(() => {
+    const routedPage = pageFromPath(window.location.pathname);
+    if (routedPage !== "login") return routedPage;
+
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -37,8 +58,10 @@ function App() {
 
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const [selectedChallenge, setSelectedChallenge] =
-    useState(null);
+  const [selectedChallenge, setSelectedChallenge] = useState(() => {
+    const challengeId = challengeIdFromPath(window.location.pathname);
+    return challengeId ? { challengeId } : null;
+  });
 
   const [user, setUser] = useState(() => {
     const savedUser =
@@ -48,6 +71,11 @@ function App() {
       ? JSON.parse(savedUser)
       : null;
   });
+  useEffect(() => {
+    setPage(pageFromPath(location.pathname));
+    const challengeId = challengeIdFromPath(location.pathname);
+    setSelectedChallenge(challengeId ? { challengeId } : null);
+  }, [location.pathname]);
 
   /* KEEP USER PROGRESS UPDATED */
 
@@ -73,49 +101,71 @@ function App() {
       );
     };
   }, []);
+ 
 
   /* NAVIGATION */
 
   function changePage(newPage) {
-    setPage(newPage);
+    const pathByPage = {
+      challenge: routes.challenge,
+      catalog: routes.catalog,
+      leaderboard: routes.leaderboard,
+      practiced: routes.practiced,
+      invitations: routes.invitations,
+      profile: routes.profile,
+      company: routes.company,
+      login: routes.login,
+      signup: routes.signup,
+      "company-signup": routes.companySignup,
+      "email-verification": routes.verification,
+      instructions: routes.instructions,
+    };
+
+    setSelectedChallenge(null);
     setMenuOpen(false);
+    navigate(pathByPage[newPage] || routes.login);
   }
 
   /* LOGIN */
 
-  function handleLogin() {
-    const savedUser =
-      localStorage.getItem("user");
+function handleLogin() {
+  const savedUser =
+    localStorage.getItem("user");
 
-    if (savedUser) {
-      const loggedInUser =
-        JSON.parse(savedUser);
-
-      setUser(loggedInUser);
-      setSelectedChallenge(null);
-      setMenuOpen(false);
+  if (savedUser) {
+    const loggedInUser =
+      JSON.parse(savedUser);
 
       if (loggedInUser.role === "company") {
-        setPage("company");
-      } else {
-        setPage("challenge");
+        navigate(routes.company);
       }
+    setUser(loggedInUser);
+    setSelectedChallenge(null);
+    setMenuOpen(false);
 
-      return;
-    }
+    const nextPage =
+      loggedInUser.role === "company"
+        ? "company"
+        : "challenge";
 
-    setPage("challenge");
+    navigate(nextPage === "company" ? routes.company : routes.challenge);
+
+    return;
   }
+
+  navigate(routes.challenge);
+}
 
   /* PRACTICE AGAIN */
 
-  function handlePractice(challengeId) {
-  setSelectedChallenge({
-    challengeId,
-  });
+function handlePractice(challengeId) {
+  const selected = {
+    challengeId: String(challengeId),
+  };
 
+  setSelectedChallenge(selected);
   setMenuOpen(false);
-  setPage("challenge");
+  navigate(`${routes.challenge}/${selected.challengeId}`);
 }
 
   /* LOGOUT */
@@ -126,9 +176,10 @@ function App() {
 
     setUser(null);
     setSelectedChallenge(null);
+    setAssessmentReady(false);
     setMenuOpen(false);
 
-    setPage("login");
+    navigate(routes.login);
   }
 
   return (
@@ -137,12 +188,8 @@ function App() {
 
       {page === "login" && (
         <Login
-          onSignup={() =>
-            setPage("signup")
-          }
-          onCompanySignup={() =>
-            setPage("company-signup")
-          }
+          onSignup={() => changePage("signup")}
+          onCompanySignup={() => changePage("company-signup")}
           onLogin={handleLogin}
         />
       )}
@@ -152,10 +199,10 @@ function App() {
       {page === "signup" && (
         <Signup
           onLogin={handleLogin}
-          onSignIn={() => setPage("login")}
+          onSignIn={() => changePage("login")}
           onRequireVerification={(data) => {
             setVerificationData(data);
-            setPage("email-verification");
+            changePage("email-verification");
           }}
         />
       )}
@@ -169,7 +216,7 @@ function App() {
           password={verificationData?.password}
           role={verificationData?.role || "student"}
           onVerified={() => handleLogin()}
-          onBack={() => setPage("signup")}
+          onBack={() => changePage("signup")}
         />
       )}
 
@@ -185,7 +232,18 @@ function App() {
               setUser(JSON.parse(savedUser));
             }
 
-            setPage("company");
+            changePage("company");
+          }}
+        />
+      )}
+
+      {/* ================= INSTRUCTIONS ================= */}
+
+      {page === "instructions" && (
+        <Instructions
+          onProceed={() => {
+            setAssessmentReady(true);
+            changePage("challenge");
           }}
         />
       )}
@@ -204,9 +262,9 @@ function App() {
       {page === "profile" && (
         <Profile
           user={user}
-          onBack={() =>
-            setPage("challenge")
-          }
+         onBack={() =>
+  changePage("challenge")
+}
         />
       )}
 
@@ -217,6 +275,7 @@ function App() {
         page !== "email-verification" &&
         page !== "company-signup" &&
         page !== "company" &&
+        page !== "instructions" &&
         page !== "profile" && (
           <>
             {/* ================= HEADER ================= */}
@@ -247,6 +306,14 @@ function App() {
                       }
                     >
                       🧩 Challenges
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        changePage("catalog")
+                      }
+                    >
+                      Browse Categories
                     </button>
 
                     <button
@@ -317,7 +384,17 @@ function App() {
                 selectedChallenge={
                   selectedChallenge
                 }
+                setSelectedChallenge={setSelectedChallenge}
+                onStartAssessment={() => {
+                  setAssessmentReady(false);
+                  changePage("instructions");
+                }}
+                assessmentReady={assessmentReady}
               />
+            )}
+
+            {page === "catalog" && (
+              <ChallengeCatalog onPractice={handlePractice} />
             )}
 
             {/* ================= LEADERBOARD ================= */}

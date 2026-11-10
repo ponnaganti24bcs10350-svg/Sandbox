@@ -165,6 +165,17 @@ body {
 
   overflow: hidden;
 }
+.workspace-main {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+}
+
 
 .workspace-content {
   flex: 1;
@@ -345,8 +356,8 @@ body {
 ========================= */
 
 .challenge-panel {
+  /* width is now controlled inline via React state (panelWidth) so it can be resized */
   width: 280px;
-  min-width: 280px;
 
   background: #1e1e1e;
 
@@ -358,6 +369,25 @@ body {
   overflow-x: hidden;
 
   flex-shrink: 0;
+}
+
+/* =========================
+   QUESTION / CODE SPLIT HANDLE
+========================= */
+
+.panel-resize-handle {
+  width: 5px;
+  min-width: 5px;
+
+  background: #3c3c3c;
+
+  cursor: ew-resize;
+
+  flex-shrink: 0;
+}
+
+.panel-resize-handle:hover {
+  background: #007acc;
 }
 
 .challenge-panel h2 {
@@ -2231,4 +2261,72 @@ right: 10%;
   .challenge-name {
     font-size: 19px;
   }
+}
+
+.project-overview-code {
+  margin: 10px 0 20px;
+  padding: 16px;
+  border-radius: 8px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  color: #ddd;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.challenge-panel h4 {
+  margin: 18px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.challenge-panel p {
+  white-space: pre-line;
+}
+.test-results {
+  padding: 20px;
+  line-height: 1.6;
+}
+
+.test-results h3 {
+  margin: 0 0 12px;
+}
+
+.test-results > p {
+  margin: 8px 0;
+}
+
+.failure-areas {
+  margin-top: 20px;
+}
+
+.failure-areas h4 {
+  margin: 0 0 14px;
+}
+
+.failure-areas ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.failure-areas li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #161616;
+  border: 1px solid #2a2a2a;
+}
+
+.failure-areas li span {
+  color: #aaa;
+  font-size: 13px;
 }
